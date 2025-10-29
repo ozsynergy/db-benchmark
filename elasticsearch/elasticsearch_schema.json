@@ -1,0 +1,34 @@
+{
+  "users": {
+    "mappings": {
+      "properties": {
+        "id": { "type": "integer" },
+        "email": { "type": "keyword" },
+        "name": { "type": "text" },
+        "created_at": { "type": "date", "format": "yyyy-MM-dd'T'HH:mm:ssZ||epoch_millis" }
+      }
+    }
+  },
+  "courses": {
+    "mappings": {
+      "properties": {
+        "id": { "type": "integer" },
+        "title": { "type": "text" },
+        "description": { "type": "text" },
+        "department": { "type": "keyword" },
+        "instructor_id": { "type": "integer" },
+        "created_at": { "type": "date", "format": "yyyy-MM-dd'T'HH:mm:ssZ||epoch_millis" }
+      }
+    }
+  },
+  "enrollments": {
+    "mappings": {
+      "properties": {
+        "id": { "type": "integer" },
+        "user_id": { "type": "integer" },
+        "course_id": { "type": "integer" },
+        "enrolled_at": { "type": "date", "format": "yyyy-MM-dd'T'HH:mm:ssZ||epoch_millis" }
+      }
+    }
+  }
+}

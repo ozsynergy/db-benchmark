@@ -1,0 +1,10 @@
+services:
+  mysql:
+    image: mysql:9.5
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: benchmark
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql_schema.sql:/docker-entrypoint-initdb.d/init.sql

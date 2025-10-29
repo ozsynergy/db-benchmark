@@ -1,23 +1,56 @@
-# Goals
-The goal of this project is to benchmark 3 database engines against each other.
-The 3 database servers are elasticseach,  mongo and mysql.
+# Database Benchmark Project
 
-Each database will contain the same schema and dataset.
+## Goals
 
-The benchmark will perform 3 different query types.
-The most common scenarios are a keyword text search
-Lookup by identifier (like an email address)
-Lookup by multiple factors
-Aggregation (top 5 courses)
+The goal of this project is to benchmark three database engines against each other:
+- Elasticsearch
+- MongoDB
+- MySQL
 
-# Usage:
-Start one database server you wish to benchmark
-npm run db:mongo
-npm run db:mysql
-npm run db:elasticseach
+Each database will contain the same schema and dataset, allowing for direct performance comparisons.
 
-node benchmark <server type> <request count>   
+The benchmark performs three different query types:
+- Keyword text search
+- Lookup by identifier (e.g., email address)
+- Lookup by multiple factors
+- Aggregation (top 5 courses)
 
-# Clean up:
-Stops all database docker containers
+## Dataset
+
+The databases contain the following tables/collections:
+- **Users**: id, email, name, created_at
+- **Courses**: id, title, description, department, instructor_id, created_at
+- **Enrollments**: id, user_id, course_id, enrolled_at
+
+Sample data generated: 1000 users, 100 courses, 2000 enrollments.
+
+## Usage
+
+### Starting a Database Server
+
+Select one database server to benchmark:
+
+```bash
+npm run db:mongo   # Starts MongoDB
+npm run db:mysql   # Starts MySQL
+npm run db:elasticsearch  # Starts Elasticsearch
+```
+
+### Running Benchmarks
+
+Execute the benchmark script:
+
+```bash
+node benchmark <server type> <request count>
+```
+
+- `<server type>`: mongo, mysql, elasticsearch
+- `<request count>`: number of requests per test (optional, default not specified)
+
+### Cleanup
+
+Stop all database containers:
+
+```bash
 npm run db:stop
+```

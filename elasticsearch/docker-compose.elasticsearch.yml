@@ -1,0 +1,33 @@
+services:
+  elasticsearch:
+    image: elasticsearch:9.2.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+  elasticsearch-init:
+    image: curlimages/curl:8.8.0
+    depends_on:
+      - elasticsearch
+    command: >
+      sh -c "
+        for i in \$(seq 1 10); do
+          if curl -s http://elasticsearch:9200/_cluster/health > /dev/null; then
+            break
+          fi
+          sleep 5
+        done &&
+        curl -X PUT 'elasticsearch:9200/users' -H 'Content-Type: application/json' -d '{\"mappings\": {\"properties\": {\"id\": {\"type\": \"integer\"}, \"email\": {\"type\": \"keyword\"}, \"name\": {\"type\": \"text\"}, \"created_at\": {\"type\": \"date\", \"format\": \"yyyy-MM-dd'\''T'\''HH:mm:ssZ||epoch_millis\"}}}}' &&
+        curl -X PUT 'elasticsearch:9200/courses' -H 'Content-Type: application/json' -d '{\"mappings\": {\"properties\": {\"id\": {\"type\": \"integer\"}, \"title\": {\"type\": \"text\"}, \"description\": {\"type\": \"text\"}, \"department\": {\"type\": \"keyword\"}, \"instructor_id\": {\"type\": \"integer\"}, \"created_at\": {\"type\": \"date\", \"format\": \"yyyy-MM-dd'\''T'\''HH:mm:ssZ||epoch_millis\"}}}}' &&
+        curl -X PUT 'elasticsearch:9200/enrollments' -H 'Content-Type: application/json' -d '{\"mappings\": {\"properties\": {\"id\": {\"type\": \"integer\"}, \"user_id\": {\"type\": \"integer\"}, \"course_id\": {\"type\": \"integer\"}, \"enrolled_at\": {\"type\": \"date\", \"format\": \"yyyy-MM-dd'\''T'\''HH:mm:ssZ||epoch_millis\"}}}}' &&
+        echo 'Elasticsearch schemas created'
+      "
+
+volumes:
+  elasticsearch_data:
