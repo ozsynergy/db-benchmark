@@ -1,5 +1,12 @@
 {
+  "scripts": {
+    "db:mongo": "cd mongo && docker compose -f docker-compose.mongo.yml up -d",
+    "db:mysql": "cd mysql && docker compose -f docker-compose.mysql.yml up -d",
+    "db:elasticsearch": "cd elasticsearch && docker compose -f docker-compose.elasticsearch.yml up -d",
+    "db:stop": "docker compose -f mongo/docker-compose.mongo.yml down && docker compose -f mysql/docker-compose.mysql.yml down && docker compose -f elasticsearch/docker-compose.elasticsearch.yml down"
+  },
   "dependencies": {
+    "@elastic/elasticsearch": "^9.2.0",
     "mongodb": "^6.20.0",
     "mysql2": "^3.15.3"
   }

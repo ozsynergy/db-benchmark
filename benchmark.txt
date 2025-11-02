@@ -1,0 +1,54 @@
+Final benchmark results across all databases (100 requests per query type):
+
+__MongoDB:__
+
+- Keyword Text Search: 1.63 ms
+- Lookup by Identifier: 0.80 ms
+- Lookup by Multiple Factors: 0.54 ms
+- Aggregation Top 5 Courses: 1.43 ms
+
+__MySQL:__
+
+- Keyword Text Search: 0.91 ms
+- Lookup by Identifier: 0.32 ms
+- Lookup by Multiple Factors: 0.37 ms
+- Aggregation Top 5 Courses: 0.66 ms
+
+__Elasticsearch:__
+
+- Keyword Text Search: 5.09 ms
+- Lookup by Identifier: 3.83 ms
+- Lookup by Multiple Factors: 2.66 ms
+- Aggregation Top 5 Courses: 3.04 ms
+
+Results show MySQL generally fastest, followed by MongoDB, with Elasticsearch slowest overall. Keyword text search is slowest for all databases.
+
+Benchmark results with larger dataset (10k users, 1k courses, 20k enrollments, 50 requests per query type):
+
+__MongoDB:__
+
+- Keyword Text Search: 8.67 ms
+- Lookup by Identifier: 0.55 ms
+- Lookup by Multiple Factors: 0.60 ms
+- Aggregation Top 5 Courses: 6.77 ms
+
+__MySQL:__
+
+- Keyword Text Search: 3.33 ms
+- Lookup by Identifier: 0.29 ms
+- Lookup by Multiple Factors: 0.43 ms
+- Aggregation Top 5 Courses: 3.32 ms
+
+__Elasticsearch:__
+
+- Keyword Text Search: 3.25 ms
+- Lookup by Identifier: 3.73 ms
+- Lookup by Multiple Factors: 1.93 ms
+- Aggregation Top 5 Courses: 2.69 ms
+
+__Performance Comparison:__
+
+- MySQL consistently fastest across most query types
+- Elasticsearch strong in keyword search and aggregation, but slower on exact lookups
+- MongoDB competitive in lookups, but lag in text search and aggregation with larger data
+- Overall: MySQL ≈ Elasticsearch > MongoDB with this dataset size and query patterns

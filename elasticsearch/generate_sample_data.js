@@ -1,10 +1,9 @@
-const fs = require('fs');
-// Using built-in fetch (Node.js 18+)
+const { Client } = require('@elastic/elasticsearch');
 
 // Sample data sizes for dev machine: adequate for testing without overloading
-const NUM_USERS = 1000;
-const NUM_COURSES = 100;
-const NUM_ENROLLMENTS = 2000; // avg ~2 per user
+const NUM_USERS = 10000;
+const NUM_COURSES = 1000;
+const NUM_ENROLLMENTS = 20000; // avg ~2 per user
 
 // Departments
 const departments = ['Computer Science', 'Mathematics', 'Physics', 'Biology', 'Chemistry', 'History', 'English', 'Economics'];
@@ -13,9 +12,6 @@ const departments = ['Computer Science', 'Mathematics', 'Physics', 'Biology', 'C
 function generateUsers() {
   const users = [];
   for (let i = 1; i <= NUM_USERS; i++) {
-    users.push({
-      index: { _index: 'users', _id: i.toString() }
-    });
     users.push({
       id: i,
       email: `user${i}@example.com`,
@@ -31,9 +27,6 @@ function generateCourses() {
   const courses = [];
   for (let i = 1; i <= NUM_COURSES; i++) {
     const deptIndex = Math.floor(Math.random() * departments.length);
-    courses.push({
-      index: { _index: 'courses', _id: i.toString() }
-    });
     courses.push({
       id: i,
       title: `Course ${i}`,
@@ -58,9 +51,6 @@ function generateEnrollments() {
     if (!seen.has(key)) {
       seen.add(key);
       enrollments.push({
-        index: { _index: 'enrollments', _id: id.toString() }
-      });
-      enrollments.push({
         id: id,
         user_id: userId,
         course_id: courseId,
@@ -72,29 +62,31 @@ function generateEnrollments() {
   return enrollments;
 }
 
-// Bulk insert function
-async function bulkInsert(data) {
-  const body = data.map(doc => JSON.stringify(doc)).join('\n') + '\n';
-  const response = await fetch('http://localhost:9200/_bulk', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-ndjson' },
-    body: body
-  });
-  if (!response.ok) {
-    console.error('Bulk insert failed:', await response.text());
+async function bulkInsert(data, index, client) {
+  const operations = data.flatMap(doc => [{ index: { _index: index } }, doc]);
+  const bulkResponse = await client.bulk({ refresh: true, operations });
+  if (bulkResponse.errors) {
+    console.error('Bulk errors:', bulkResponse);
   } else {
-    console.log('Data inserted successfully');
+    console.log(`Inserted ${data.length} documents into ${index}`);
   }
 }
 
 async function main() {
-  const users = generateUsers();
-  const courses = generateCourses();
-  const enrollments = generateEnrollments();
+  const client = new Client({ node: 'http://localhost:9200' });
+  try {
+    const users = generateUsers();
+    const courses = generateCourses();
+    const enrollments = generateEnrollments();
 
-  console.log(`Generating ${NUM_USERS} users, ${NUM_COURSES} courses, ${NUM_ENROLLMENTS} enrollments`);
+    console.log(`Generating ${NUM_USERS} users, ${NUM_COURSES} courses, ${NUM_ENROLLMENTS} enrollments`);
 
-  await bulkInsert([...users, ...courses, ...enrollments]);
+    await bulkInsert(users, 'users', client);
+    await bulkInsert(courses, 'courses', client);
+    await bulkInsert(enrollments, 'enrollments', client);
+  } finally {
+    await client.close();
+  }
 }
 
 main().catch(console.error);

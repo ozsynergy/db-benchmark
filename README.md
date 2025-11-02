@@ -10,9 +10,11 @@ The goal of this project is to benchmark three database engines against each oth
 Each database will contain the same schema and dataset, allowing for direct performance comparisons.
 
 The benchmark performs three different query types:
-- Keyword text search
+- Keyword text search  
+    - find word in string 
+    - find word at start of string
 - Lookup by identifier (e.g., email address)
-- Lookup by multiple factors
+- Lookup by multiple factors (department and status)
 - Aggregation (top 5 courses)
 
 ## Dataset
@@ -41,7 +43,7 @@ npm run db:elasticsearch  # Starts Elasticsearch
 Execute the benchmark script:
 
 ```bash
-node benchmark <server type> <request count>
+node benchmark.js <server type> <request count>
 ```
 
 - `<server type>`: mongo, mysql, elasticsearch

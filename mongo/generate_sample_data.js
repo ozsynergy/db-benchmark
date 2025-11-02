@@ -1,9 +1,9 @@
 const { MongoClient } = require('mongodb');
 
 // Sample data sizes for dev machine: adequate for testing without overloading
-const NUM_USERS = 1000;
-const NUM_COURSES = 100;
-const NUM_ENROLLMENTS = 2000; // avg ~2 per user
+const NUM_USERS = 10000;
+const NUM_COURSES = 1000;
+const NUM_ENROLLMENTS = 20000; // avg ~2 per user
 
 // Departments
 const departments = ['Computer Science', 'Mathematics', 'Physics', 'Biology', 'Chemistry', 'History', 'English', 'Economics'];
