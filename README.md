@@ -2,12 +2,13 @@
 
 ## Goals
 
-The goal of this project is to benchmark three database engines against each other:
+The goal of this project is to benchmark four database engines against each other:
 - Elasticsearch
 - MongoDB
 - MySQL
+- PostgreSQL
 
-Each database will contain the same schema and dataset, allowing for direct performance comparisons.
+Each database contains the same schema and dataset, allowing for direct performance comparisons.
 
 The benchmark performs three different query types:
 - Keyword text search  
@@ -35,6 +36,7 @@ Select one database server to benchmark:
 ```bash
 npm run db:mongo   # Starts MongoDB
 npm run db:mysql   # Starts MySQL
+npm run db:postgresql  # Starts PostgreSQL
 npm run db:elasticsearch  # Starts Elasticsearch
 ```
 
@@ -46,7 +48,7 @@ Execute the benchmark script:
 node benchmark.js <server type> <request count>
 ```
 
-- `<server type>`: mongo, mysql, elasticsearch
+- `<server type>`: mongo, mysql, postgresql, elasticsearch
 - `<request count>`: number of requests per test (optional, default not specified)
 
 ### Cleanup

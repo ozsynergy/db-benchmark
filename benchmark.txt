@@ -52,3 +52,41 @@ __Performance Comparison:__
 - Elasticsearch strong in keyword search and aggregation, but slower on exact lookups
 - MongoDB competitive in lookups, but lag in text search and aggregation with larger data
 - Overall: MySQL ≈ Elasticsearch > MongoDB with this dataset size and query patterns
+
+Benchmark results with new larger dataset (20k users, 2k courses, 40k enrollments, 100 requests per query type):
+
+__PostgreSQL:__
+
+- Keyword Text Search: 5.16 ms
+- Lookup by Identifier: 0.30 ms
+- Lookup by Multiple Factors: 0.28 ms
+- Aggregation Top 5 Courses: 5.18 ms
+
+__MySQL:__
+
+- Keyword Text Search: 5.54 ms
+- Lookup by Identifier: 0.30 ms
+- Lookup by Multiple Factors: 0.51 ms
+- Aggregation Top 5 Courses: 6.29 ms
+
+__MongoDB:__
+
+- Keyword Text Search: 13.91 ms
+- Lookup by Identifier: 0.56 ms
+- Lookup by Multiple Factors: 0.56 ms
+- Aggregation Top 5 Courses: 12.99 ms
+
+__Elasticsearch:__
+
+- Keyword Text Search: 5.38 ms
+- Lookup by Identifier: 4.35 ms
+- Lookup by Multiple Factors: 2.66 ms
+- Aggregation Top 5 Courses: 3.33 ms
+
+__Performance Comparison with Largest Dataset:__
+
+- PostgreSQL and MySQL excel in exact lookups and multi-factor queries
+- Elasticsearch performs well in keyword search and aggregations
+- MongoDB shows strength in exact lookups but struggles with text search and aggregations
+- PostgreSQL slightly edges out MySQL in most categories with this large dataset
+- Overall ranking: PostgreSQL ≈ MySQL > Elasticsearch > MongoDB

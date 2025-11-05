@@ -1,8 +1,9 @@
 const { MongoClient } = require('mongodb');
 const mysql = require('mysql2/promise');
+const { Client: PgClient } = require('pg');
 const { Client } = require('@elastic/elasticsearch');
 
-const serverType = 'mysql'; // change to test different
+const serverType = 'postgresql'; // change to test different
 const requestCount = 1; // small
 
 // Copy config from benchmark.js
@@ -16,6 +17,13 @@ const config = {
     host: 'localhost',
     port: 3306,
     user: 'root',
+    password: 'root',
+    database: 'benchmark'
+  },
+  postgresql: {
+    host: 'localhost',
+    port: 5432,
+    user: 'postgres',
     password: 'root',
     database: 'benchmark'
   },
@@ -38,12 +46,26 @@ async function testQueries() {
       case 'mysql':
         client = await mysql.createConnection(conf);
         break;
+      case 'postgresql':
+        client = new PgClient(conf);
+        await client.connect();
+        break;
       case 'elasticsearch':
         client = new Client(conf);
         break;
     }
 
     console.log(`Testing ${serverType}...\n`);
+
+    // Check data counts
+    console.log('Data counts:');
+    if (serverType === 'postgresql') {
+      const userCount = await client.query('SELECT COUNT(*) FROM users');
+      const courseCount = await client.query('SELECT COUNT(*) FROM courses');
+      const enrollmentCount = await client.query('SELECT COUNT(*) FROM enrollments');
+      console.log(`  Users: ${userCount.rows[0].count}, Courses: ${courseCount.rows[0].count}, Enrollments: ${enrollmentCount.rows[0].count}`);
+    }
+    console.log();
 
     // Keyword search
     console.log('Keyword Text Search:');
@@ -82,7 +104,11 @@ async function testQueries() {
     console.error('Error:', error);
   } finally {
     if (client) {
-      await client.close();
+      if (serverType === 'mongo' || serverType === 'mysql' || serverType === 'postgresql') {
+        await client.end();
+      } else if (serverType === 'elasticsearch') {
+        await client.close();
+      }
     }
   }
 }
@@ -95,6 +121,9 @@ async function performKeywordSearch(client, db) {
   } else if (serverType === 'mysql') {
     const [rows] = await db.execute('SELECT * FROM courses WHERE MATCH(title, description) AGAINST(? IN NATURAL LANGUAGE MODE)', [searchTerm]);
     return rows;
+  } else if (serverType === 'postgresql') {
+    const result = await client.query('SELECT * FROM courses WHERE (title || \' \' || COALESCE(description, \'\')) ILIKE $1', [`%${searchTerm}%`]);
+    return result.rows;
   } else if (serverType === 'elasticsearch') {
     const result = await db.search({
       index: 'courses',
@@ -119,6 +148,9 @@ async function performLookupByIdentifier(client, db) {
   } else if (serverType === 'mysql') {
     const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
     return rows[0];
+  } else if (serverType === 'postgresql') {
+    const result = await client.query('SELECT * FROM users WHERE email = $1', [email]);
+    return result.rows[0];
   } else if (serverType === 'elasticsearch') {
     const result = await db.search({
       index: 'users',
@@ -142,6 +174,9 @@ async function performLookupByMultipleFactors(client, db) {
   } else if (serverType === 'mysql') {
     const [rows] = await db.execute('SELECT * FROM courses WHERE department = ? AND instructor_id = ?', [department, instructorId]);
     return rows;
+  } else if (serverType === 'postgresql') {
+    const result = await client.query('SELECT * FROM courses WHERE department = $1 AND instructor_id = $2', [department, instructorId]);
+    return result.rows;
   } else if (serverType === 'elasticsearch') {
     const result = await db.search({
       index: 'courses',
@@ -176,6 +211,15 @@ async function performTop5Courses(client, db) {
       LIMIT 5
     `);
     return rows;
+  } else if (serverType === 'postgresql') {
+    const result = await client.query(`
+      SELECT course_id, COUNT(*) as count
+      FROM enrollments
+      GROUP BY course_id
+      ORDER BY count DESC
+      LIMIT 5
+    `);
+    return result.rows;
   } else if (serverType === 'elasticsearch') {
     const result = await db.search({
       index: 'enrollments',

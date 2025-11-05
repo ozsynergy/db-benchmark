@@ -1,5 +1,6 @@
 const { MongoClient } = require('mongodb');
 const mysql = require('mysql2/promise');
+const { Client: PgClient } = require('pg');
 const { Client } = require('@elastic/elasticsearch');
 
 // Parse command line arguments
@@ -7,9 +8,9 @@ const args = process.argv.slice(2);
 const serverType = args[0];
 const requestCount = parseInt(args[1]) || 100;
 
-if (!serverType || !['mongo', 'mysql', 'elasticsearch'].includes(serverType)) {
+if (!serverType || !['mongo', 'mysql', 'postgresql', 'elasticsearch'].includes(serverType)) {
   console.error('Usage: node benchmark.js <server type> [request count]');
-  console.error('server type: mongo, mysql, elasticsearch');
+  console.error('server type: mongo, mysql, postgresql, elasticsearch');
   console.error('request count: number of requests per test (default: 100)');
   process.exit(1);
 }
@@ -23,6 +24,13 @@ const config = {
     host: 'localhost',
     port: 3306,
     user: 'root',
+    password: 'root',
+    database: 'benchmark'
+  },
+  postgresql: {
+    host: 'localhost',
+    port: 5432,
+    user: 'postgres',
     password: 'root',
     database: 'benchmark'
   },
@@ -44,6 +52,10 @@ async function runBenchmarks() {
         break;
       case 'mysql':
         client = await mysql.createConnection(conf);
+        break;
+      case 'postgresql':
+        client = new PgClient(conf);
+        await client.connect();
         break;
       case 'elasticsearch':
         client = new Client(conf);
@@ -77,8 +89,8 @@ async function runBenchmarks() {
     console.error('Error running benchmarks:', error);
   } finally {
     if (client) {
-      if (serverType === 'mongo' || serverType === 'mysql') {
-        await client.close();
+      if (serverType === 'mongo' || serverType === 'mysql' || serverType === 'postgresql') {
+        await client.end();
       } else if (serverType === 'elasticsearch') {
         await client.close();
       }
@@ -94,6 +106,9 @@ async function performKeywordSearch(client, db) {
   } else if (serverType === 'mysql') {
     const [rows] = await db.execute('SELECT * FROM courses WHERE MATCH(title, description) AGAINST(? IN NATURAL LANGUAGE MODE)', [searchTerm]);
     return rows;
+  } else if (serverType === 'postgresql') {
+    const result = await client.query('SELECT * FROM courses WHERE (title || \' \' || COALESCE(description, \'\')) ILIKE $1', [`%${searchTerm}%`]);
+    return result.rows;
   } else if (serverType === 'elasticsearch') {
     const result = await db.search({
       index: 'courses',
@@ -118,6 +133,9 @@ async function performLookupByIdentifier(client, db) {
   } else if (serverType === 'mysql') {
     const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
     return rows[0];
+  } else if (serverType === 'postgresql') {
+    const result = await client.query('SELECT * FROM users WHERE email = $1', [email]);
+    return result.rows[0];
   } else if (serverType === 'elasticsearch') {
     const result = await db.search({
       index: 'users',
@@ -138,6 +156,9 @@ async function performLookupByMultipleFactors(client, db) {
   } else if (serverType === 'mysql') {
     const [rows] = await db.execute('SELECT * FROM courses WHERE department = ? AND instructor_id = ?', [department, instructorId]);
     return rows;
+  } else if (serverType === 'postgresql') {
+    const result = await client.query('SELECT * FROM courses WHERE department = $1 AND instructor_id = $2', [department, instructorId]);
+    return result.rows;
   } else if (serverType === 'elasticsearch') {
     const result = await db.search({
       index: 'courses',
@@ -172,6 +193,15 @@ async function performTop5Courses(client, db) {
       LIMIT 5
     `);
     return rows;
+  } else if (serverType === 'postgresql') {
+    const result = await client.query(`
+      SELECT course_id, COUNT(*) as count
+      FROM enrollments
+      GROUP BY course_id
+      ORDER BY count DESC
+      LIMIT 5
+    `);
+    return result.rows;
   } else if (serverType === 'elasticsearch') {
     const result = await db.search({
       index: 'enrollments',
