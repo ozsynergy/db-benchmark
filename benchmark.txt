@@ -90,3 +90,58 @@ __Performance Comparison with Largest Dataset:__
 - MongoDB shows strength in exact lookups but struggles with text search and aggregations
 - PostgreSQL slightly edges out MySQL in most categories with this large dataset
 - Overall ranking: PostgreSQL ≈ MySQL > Elasticsearch > MongoDB
+
+FULL MOVIE DATASET BENCHMARK RESULTS (45,571 movies - 45,000+ courses)
+Dataset: 20,000 users, 45,000+ courses (real movie data), 450,000+ enrollments
+Test: 5 requests per query type
+
+__MySQL - Full Dataset:__
+
+- Keyword Text Search: 10.94 ms (5x slower than 2k dataset)
+- Lookup by Identifier: 0.74 ms (minimal impact)
+- Lookup by Multiple Factors: 1.79 ms (3x slower)
+- Aggregation Top 5 Courses: 70.66 ms (10x slower - biggest impact)
+
+__PostgreSQL - Full Dataset:__
+
+- Keyword Text Search: 5.46 ms (faster than 2k dataset!)
+- Lookup by Identifier: 0.59 ms (faster)
+- Lookup by Multiple Factors: 1.01 ms (minimal impact)
+- Aggregation Top 5 Courses: 67.29 ms (11x slower - biggest impact)
+
+__MongoDB - Full Dataset:__
+
+- Keyword Text Search: 12.96 ms (6x slower)
+- Lookup by Identifier: 1.03 ms (minimal impact)
+- Lookup by Multiple Factors: 2.75 ms (3x slower)
+- Aggregation Top 5 Courses: 193.53 ms (15x slower - worst degradation)
+
+__Elasticsearch - Full Dataset:__
+
+- Keyword Text Search: 25.09 ms (minimal impact)
+- Lookup by Identifier: 22.04 ms (2x slower)
+- Lookup by Multiple Factors: 10.34 ms (2x slower)
+- Aggregation Top 5 Courses: 25.51 ms (2x slower - most consistent)
+
+__Full Dataset Performance Analysis:__
+
+- Dataset Scale: 22.5x larger than previous largest test (45k vs 2k courses)
+- Aggregation queries suffer most (10-15x performance degradation)
+- PostgreSQL text search actually improves with GIN indexes at scale
+- Elasticsearch scales most gracefully (only 2x degradation)
+- MongoDB shows worst scaling characteristics, especially for aggregations
+- Simple lookups remain fast across all databases regardless of size
+
+__Final Rankings by Query Type (Full Dataset):__
+
+*Text Search:* PostgreSQL > MongoDB > MySQL > Elasticsearch
+*Exact Lookups:* PostgreSQL ≈ MySQL > MongoDB > Elasticsearch
+*Multi-Factor:* PostgreSQL > MySQL > Elasticsearch > MongoDB
+*Aggregation:* Elasticsearch > PostgreSQL > MySQL > MongoDB
+
+__Scaling Conclusions:__
+- Small datasets (<10k records): All databases perform similarly
+- Large datasets (>100k records): Database choice depends on query patterns
+- Text-heavy workloads: PostgreSQL with GIN indexes scales exceptionally well
+- Analytics workloads: Elasticsearch maintains performance best at scale
+- Simple CRUD operations: Any database works with minimal performance differences

@@ -89,9 +89,9 @@ async function runBenchmarks() {
     console.error('Error running benchmarks:', error);
   } finally {
     if (client) {
-      if (serverType === 'mongo' || serverType === 'mysql' || serverType === 'postgresql') {
+      if (serverType === 'mysql' || serverType === 'postgresql') {
         await client.end();
-      } else if (serverType === 'elasticsearch') {
+      } else if (serverType === 'mongo' || serverType === 'elasticsearch') {
         await client.close();
       }
     }

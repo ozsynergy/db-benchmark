@@ -1,9 +1,11 @@
 const mysql = require('mysql2');
+const fs = require('fs');
+const csv = require('csv-parser');
 
-// Sample data sizes for dev machine: adequate for testing without overloading
+// Sample data sizes for dev machine: loading full movie dataset
 const NUM_USERS = 20000;
-const NUM_COURSES = 2000;
-const NUM_ENROLLMENTS = 40000; // avg ~2 per user
+const NUM_COURSES = 45000;
+const NUM_ENROLLMENTS = 450000; // scaled up proportionally
 
 // Departments
 const departments = ['Computer Science', 'Mathematics', 'Physics', 'Biology', 'Chemistry', 'History', 'English', 'Economics'];
@@ -30,20 +32,37 @@ function generateUsers() {
 }
 
 // Generate courses (instructors 1-100)
-function generateCourses() {
+async function generateCourses() {
   const courses = [];
-  for (let i = 1; i <= NUM_COURSES; i++) {
-    const deptIndex = Math.floor(Math.random() * departments.length);
-    courses.push([
-      i,
-      `Course ${i}`,
-      `Description for course ${i} in ${departments[deptIndex]}.`,
-      departments[deptIndex],
-      Math.floor(Math.random() * 100) + 1, // 1-100 instructors
-      new Date(Date.now() - Math.random() * 31536000000).toISOString().slice(0, 19).replace('T', ' ')
-    ]);
-  }
-  return courses;
+  const movieData = [];
+
+  return new Promise((resolve, reject) => {
+    fs.createReadStream('../data/movies_metadata.csv')
+      .pipe(csv())
+      .on('data', (row) => {
+        if (movieData.length < NUM_COURSES) {
+          movieData.push({
+            title: row.original_title,
+            description: row.overview
+          });
+        }
+      })
+      .on('end', () => {
+        for (let i = 0; i < movieData.length; i++) {
+          const deptIndex = Math.floor(Math.random() * departments.length);
+          courses.push([
+            i + 1,
+            movieData[i].title,
+            movieData[i].description,
+            departments[deptIndex],
+            Math.floor(Math.random() * 100) + 1, // 1-100 instructors
+            new Date(Date.now() - Math.random() * 31536000000).toISOString().slice(0, 19).replace('T', ' ')
+          ]);
+        }
+        resolve(courses);
+      })
+      .on('error', reject);
+  });
 }
 
 // Generate enrollments (avoid duplicates)
@@ -84,7 +103,7 @@ async function main() {
     connection.connect();
 
     const users = generateUsers();
-    const courses = generateCourses();
+    const courses = await generateCourses();
     const enrollments = generateEnrollments();
 
     console.log(`Inserting ${NUM_USERS} users, ${NUM_COURSES} courses, ${NUM_ENROLLMENTS} enrollments into MySQL`);
