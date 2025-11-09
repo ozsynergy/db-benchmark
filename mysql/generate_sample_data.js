@@ -1,6 +1,7 @@
 const mysql = require('mysql2');
 const fs = require('fs');
 const csv = require('csv-parser');
+const util = require('util');
 
 // Sample data sizes for dev machine: loading full movie dataset
 const NUM_USERS = 20000;
@@ -10,12 +11,39 @@ const NUM_ENROLLMENTS = 450000; // scaled up proportionally
 // Departments
 const departments = ['Computer Science', 'Mathematics', 'Physics', 'Biology', 'Chemistry', 'History', 'English', 'Economics'];
 
-const connection = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'root',
-  database: 'benchmark'
-});
+async function waitForConnection() {
+  const maxRetries = 60;
+  let connection;
+  for (let i = 0; i < maxRetries; i++) {
+    connection = mysql.createConnection({
+      host: 'localhost',
+      user: 'root',
+      password: 'root',
+      database: 'benchmark'
+    });
+    try {
+      await new Promise((resolve, reject) => {
+        connection.connect((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      // Test if DB is ready by running a simple query
+      await new Promise((resolve, reject) => {
+        connection.query('SELECT 1', (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      console.log('Connected to MySQL');
+      return connection;
+    } catch (err) {
+      console.log(`Waiting for MySQL connection... (${i + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+  throw new Error('Failed to connect to MySQL after 60 retries');
+}
 
 // Generate users
 function generateUsers() {
@@ -37,7 +65,7 @@ async function generateCourses() {
   const movieData = [];
 
   return new Promise((resolve, reject) => {
-    fs.createReadStream('../data/movies_metadata.csv')
+    fs.createReadStream('data/movies_metadata.csv')
       .pipe(csv())
       .on('data', (row) => {
         if (movieData.length < NUM_COURSES) {
@@ -88,7 +116,7 @@ function generateEnrollments() {
   return enrollments;
 }
 
-async function insertBatch(table, columns, data) {
+async function insertBatch(connection, table, columns, data) {
   const query = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ?`;
   return new Promise((resolve, reject) => {
     connection.query(query, [data], (error, results) => {
@@ -99,8 +127,9 @@ async function insertBatch(table, columns, data) {
 }
 
 async function main() {
+  let connection;
   try {
-    connection.connect();
+    connection = await waitForConnection();
 
     const users = generateUsers();
     const courses = await generateCourses();
@@ -108,15 +137,15 @@ async function main() {
 
     console.log(`Inserting ${NUM_USERS} users, ${NUM_COURSES} courses, ${NUM_ENROLLMENTS} enrollments into MySQL`);
 
-    await insertBatch('users', ['id', 'email', 'name', 'created_at'], users);
-    await insertBatch('courses', ['id', 'title', 'description', 'department', 'instructor_id', 'created_at'], courses);
-    await insertBatch('enrollments', ['id', 'user_id', 'course_id', 'enrolled_at'], enrollments);
+    await insertBatch(connection, 'users', ['id', 'email', 'name', 'created_at'], users);
+    await insertBatch(connection, 'courses', ['id', 'title', 'description', 'department', 'instructor_id', 'created_at'], courses);
+    await insertBatch(connection, 'enrollments', ['id', 'user_id', 'course_id', 'enrolled_at'], enrollments);
 
     console.log('Data inserted successfully');
   } catch (error) {
     console.error('Error inserting data:', error);
   } finally {
-    connection.end();
+    if (connection) connection.end();
   }
 }
 

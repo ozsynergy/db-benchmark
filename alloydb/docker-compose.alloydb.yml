@@ -1,0 +1,10 @@
+services:
+  alloydb:
+    image: google/alloydbomni:16-ubi
+    environment:
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: benchmark
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./alloydb_schema.sql:/docker-entrypoint-initdb.d/init.sql

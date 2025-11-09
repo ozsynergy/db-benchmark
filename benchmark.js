@@ -8,9 +8,9 @@ const args = process.argv.slice(2);
 const serverType = args[0];
 const requestCount = parseInt(args[1]) || 100;
 
-if (!serverType || !['mongo', 'mysql', 'postgresql', 'elasticsearch'].includes(serverType)) {
+if (!serverType || !['mongo', 'mysql', 'postgresql', 'alloydb', 'elasticsearch'].includes(serverType)) {
   console.error('Usage: node benchmark.js <server type> [request count]');
-  console.error('server type: mongo, mysql, postgresql, elasticsearch');
+  console.error('server type: mongo, mysql, postgresql, alloydb, elasticsearch');
   console.error('request count: number of requests per test (default: 100)');
   process.exit(1);
 }
@@ -28,6 +28,13 @@ const config = {
     database: 'benchmark'
   },
   postgresql: {
+    host: 'localhost',
+    port: 5432,
+    user: 'postgres',
+    password: 'root',
+    database: 'benchmark'
+  },
+  alloydb: {
     host: 'localhost',
     port: 5432,
     user: 'postgres',
@@ -54,6 +61,10 @@ async function runBenchmarks() {
         client = await mysql.createConnection(conf);
         break;
       case 'postgresql':
+        client = new PgClient(conf);
+        await client.connect();
+        break;
+      case 'alloydb':
         client = new PgClient(conf);
         await client.connect();
         break;
@@ -89,7 +100,7 @@ async function runBenchmarks() {
     console.error('Error running benchmarks:', error);
   } finally {
     if (client) {
-      if (serverType === 'mysql' || serverType === 'postgresql') {
+      if (serverType === 'mysql' || serverType === 'postgresql' || serverType === 'alloydb') {
         await client.end();
       } else if (serverType === 'mongo' || serverType === 'elasticsearch') {
         await client.close();
@@ -106,7 +117,7 @@ async function performKeywordSearch(client, db) {
   } else if (serverType === 'mysql') {
     const [rows] = await db.execute('SELECT * FROM courses WHERE MATCH(title, description) AGAINST(? IN NATURAL LANGUAGE MODE)', [searchTerm]);
     return rows;
-  } else if (serverType === 'postgresql') {
+  } else if (serverType === 'postgresql' || serverType === 'alloydb') {
     const result = await client.query('SELECT * FROM courses WHERE (title || \' \' || COALESCE(description, \'\')) ILIKE $1', [`%${searchTerm}%`]);
     return result.rows;
   } else if (serverType === 'elasticsearch') {
@@ -133,7 +144,7 @@ async function performLookupByIdentifier(client, db) {
   } else if (serverType === 'mysql') {
     const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
     return rows[0];
-  } else if (serverType === 'postgresql') {
+  } else if (serverType === 'postgresql' || serverType === 'alloydb') {
     const result = await client.query('SELECT * FROM users WHERE email = $1', [email]);
     return result.rows[0];
   } else if (serverType === 'elasticsearch') {
@@ -156,7 +167,7 @@ async function performLookupByMultipleFactors(client, db) {
   } else if (serverType === 'mysql') {
     const [rows] = await db.execute('SELECT * FROM courses WHERE department = ? AND instructor_id = ?', [department, instructorId]);
     return rows;
-  } else if (serverType === 'postgresql') {
+  } else if (serverType === 'postgresql' || serverType === 'alloydb') {
     const result = await client.query('SELECT * FROM courses WHERE department = $1 AND instructor_id = $2', [department, instructorId]);
     return result.rows;
   } else if (serverType === 'elasticsearch') {
@@ -193,7 +204,7 @@ async function performTop5Courses(client, db) {
       LIMIT 5
     `);
     return rows;
-  } else if (serverType === 'postgresql') {
+  } else if (serverType === 'postgresql' || serverType === 'alloydb') {
     const result = await client.query(`
       SELECT course_id, COUNT(*) as count
       FROM enrollments

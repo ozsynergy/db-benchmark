@@ -123,25 +123,37 @@ __Elasticsearch - Full Dataset:__
 - Lookup by Multiple Factors: 10.34 ms (2x slower)
 - Aggregation Top 5 Courses: 25.51 ms (2x slower - most consistent)
 
+__AlloyDB - Full Dataset:__
+
+- Keyword Text Search: 4.55 ms (fastest text search!)
+- Lookup by Identifier: 0.22 ms (fastest lookups overall)
+- Lookup by Multiple Factors: 0.79 ms (excellent performance)
+- Aggregation Top 5 Courses: 71.94 ms (11x slower - competitive)
+
 __Full Dataset Performance Analysis:__
 
 - Dataset Scale: 22.5x larger than previous largest test (45k vs 2k courses)
 - Aggregation queries suffer most (10-15x performance degradation)
+- AlloyDB shows exceptional performance in exact lookups, outperforming all databases
 - PostgreSQL text search actually improves with GIN indexes at scale
+- AlloyDB provides fastest text search performance among PostgreSQL-compatible databases
 - Elasticsearch scales most gracefully (only 2x degradation)
 - MongoDB shows worst scaling characteristics, especially for aggregations
 - Simple lookups remain fast across all databases regardless of size
 
+
+
 __Final Rankings by Query Type (Full Dataset):__
 
-*Text Search:* PostgreSQL > MongoDB > MySQL > Elasticsearch
-*Exact Lookups:* PostgreSQL ≈ MySQL > MongoDB > Elasticsearch
-*Multi-Factor:* PostgreSQL > MySQL > Elasticsearch > MongoDB
-*Aggregation:* Elasticsearch > PostgreSQL > MySQL > MongoDB
+*Text Search:* AlloyDB > PostgreSQL > MongoDB > MySQL > Elasticsearch
+*Exact Lookups:* AlloyDB > PostgreSQL ≈ MySQL > MongoDB > Elasticsearch
+*Multi-Factor:* AlloyDB > PostgreSQL > MySQL > Elasticsearch > MongoDB
+*Aggregation:* Elasticsearch > PostgreSQL > MySQL > AlloyDB > MongoDB
 
 __Scaling Conclusions:__
 - Small datasets (<10k records): All databases perform similarly
 - Large datasets (>100k records): Database choice depends on query patterns
-- Text-heavy workloads: PostgreSQL with GIN indexes scales exceptionally well
+- Text-heavy workloads: AlloyDB and PostgreSQL with GIN indexes scale exceptionally well
+- Lookup-heavy workloads: AlloyDB provides best performance for exact matches
 - Analytics workloads: Elasticsearch maintains performance best at scale
 - Simple CRUD operations: Any database works with minimal performance differences

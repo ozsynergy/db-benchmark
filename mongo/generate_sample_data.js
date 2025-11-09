@@ -13,7 +13,7 @@ const departments = ['Computer Science', 'Mathematics', 'Physics', 'Biology', 'C
 const url = 'mongodb://root:root@localhost:27017';
 const dbName = 'benchmark';
 
-const client = new MongoClient(url);
+// Client will be created in waitForConnection
 
 // Generate users
 function generateUsers() {
@@ -35,7 +35,7 @@ async function generateCourses() {
   const movieData = [];
 
   return new Promise((resolve, reject) => {
-    fs.createReadStream('../data/movies_metadata.csv')
+    fs.createReadStream('data/movies_metadata.csv')
       .pipe(csv())
       .on('data', (row) => {
         if (movieData.length < NUM_COURSES) {
@@ -86,9 +86,27 @@ function generateEnrollments() {
   return enrollments;
 }
 
+async function waitForConnection() {
+  const maxRetries = 30;
+  let client;
+  for (let i = 0; i < maxRetries; i++) {
+    client = new MongoClient(url);
+    try {
+      await client.connect();
+      console.log('Connected to MongoDB');
+      return client;
+    } catch (err) {
+      console.log(`Waiting for MongoDB connection... (${i + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+  throw new Error('Failed to connect to MongoDB after 30 retries');
+}
+
 async function main() {
+  let client;
   try {
-    await client.connect();
+    client = await waitForConnection();
     const db = client.db(dbName);
 
     const users = generateUsers();

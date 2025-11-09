@@ -4,7 +4,13 @@
     "db:mysql": "cd mysql && docker compose -f docker-compose.mysql.yml up -d",
     "db:elasticsearch": "cd elasticsearch && docker compose -f docker-compose.elasticsearch.yml up -d",
     "db:postgresql": "cd postgresql && docker compose -f docker-compose.postgresql.yml up -d",
-    "db:stop": "docker compose -f mongo/docker-compose.mongo.yml down && docker compose -f mysql/docker-compose.mysql.yml down && docker compose -f elasticsearch/docker-compose.elasticsearch.yml down && docker compose -f postgresql/docker-compose.postgresql.yml down"
+    "db:alloydb": "cd alloydb && docker compose -f docker-compose.alloydb.yml up -d",
+    "db:stop": "docker compose -f mongo/docker-compose.mongo.yml down && docker compose -f mysql/docker-compose.mysql.yml down && docker compose -f elasticsearch/docker-compose.elasticsearch.yml down && docker compose -f postgresql/docker-compose.postgresql.yml down && docker compose -f alloydb/docker-compose.alloydb.yml down",
+    "benchmark:mongo": "npm run db:mongo && node mongo/generate_sample_data.js && node benchmark.js mongo && npm run db:stop",
+    "benchmark:mysql": "npm run db:mysql && node mysql/generate_sample_data.js && node benchmark.js mysql && npm run db:stop",
+    "benchmark:postgresql": "npm run db:postgresql && node postgresql/generate_sample_data.js && node benchmark.js postgresql && npm run db:stop",
+    "benchmark:alloydb": "npm run db:alloydb && node alloydb/generate_sample_data.js && node benchmark.js alloydb && npm run db:stop",
+    "benchmark:elasticsearch": "npm run db:elasticsearch && node elasticsearch/generate_sample_data.js && node benchmark.js elasticsearch && npm run db:stop"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^9.2.0",

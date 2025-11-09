@@ -30,7 +30,7 @@ async function generateCourses() {
   const movieData = [];
 
   return new Promise((resolve, reject) => {
-    fs.createReadStream('../data/movies_metadata.csv')
+    fs.createReadStream('data/movies_metadata.csv')
       .pipe(csv())
       .on('data', (row) => {
         if (movieData.length < NUM_COURSES) {
@@ -91,9 +91,27 @@ async function bulkInsert(data, index, client) {
   }
 }
 
-async function main() {
+async function waitForConnection() {
+  const maxRetries = 30;
   const client = new Client({ node: 'http://localhost:9200' });
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      await client.ping();
+      console.log('Connected to Elasticsearch');
+      return client;
+    } catch (err) {
+      console.log(`Waiting for Elasticsearch connection... (${i + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+  throw new Error('Failed to connect to Elasticsearch after 30 retries');
+}
+
+async function main() {
+  let client;
   try {
+    client = await waitForConnection();
+
     const users = generateUsers();
     const courses = await generateCourses();
     const enrollments = generateEnrollments();
@@ -104,7 +122,7 @@ async function main() {
     await bulkInsert(courses, 'courses', client);
     await bulkInsert(enrollments, 'enrollments', client);
   } finally {
-    await client.close();
+    if (client) await client.close();
   }
 }
 

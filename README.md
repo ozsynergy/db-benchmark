@@ -2,7 +2,8 @@
 
 ## Goals
 
-The goal of this project is to benchmark four database engines against each other:
+The goal of this project is to benchmark five database engines against each other:
+- AlloyDB
 - Elasticsearch
 - MongoDB
 - MySQL
@@ -27,6 +28,11 @@ The databases contain the following tables/collections:
 
 Sample data generated: 1000 users, 100 courses, 2000 enrollments.
 
+## Install
+
+cd data
+wget https://huggingface.co/spaces/Kamand/Movie_Recommendation/resolve/main/movies_metadata.csv
+
 ## Usage
 
 ### Starting a Database Server
@@ -34,11 +40,26 @@ Sample data generated: 1000 users, 100 courses, 2000 enrollments.
 Select one database server to benchmark:
 
 ```bash
+npm run db:alloydb  # Starts AlloyDB
 npm run db:mongo   # Starts MongoDB
 npm run db:mysql   # Starts MySQL
 npm run db:postgresql  # Starts PostgreSQL
 npm run db:elasticsearch  # Starts Elasticsearch
 ```
+
+### Seeding the Databases
+
+After starting a database server, seed it with sample data by running the corresponding script. The scripts will wait for the database connection to be established before inserting data.
+
+```bash
+node alloydb/generate_sample_data.js
+node mysql/generate_sample_data.js
+node postgresql/generate_sample_data.js
+node mongo/generate_sample_data.js
+node elasticsearch/generate_sample_data.js
+```
+
+Note: The PostgreSQL and AlloyDB scripts check for existing data and only inserts if the tables are empty.
 
 ### Running Benchmarks
 
@@ -48,8 +69,18 @@ Execute the benchmark script:
 node benchmark.js <server type> <request count>
 ```
 
-- `<server type>`: mongo, mysql, postgresql, elasticsearch
-- `<request count>`: number of requests per test (optional, default not specified)
+- `<server type>`: alloydb, mongo, mysql, postgresql, elasticsearch
+- `<request count>`: number of requests per test (optional, default 100)
+
+Alternatively, use the convenience scripts that start the database, seed data, run benchmarks, and stop the database:
+
+```bash
+npm run benchmark:alloydb
+npm run benchmark:mongo
+npm run benchmark:mysql
+npm run benchmark:postgresql
+npm run benchmark:elasticsearch
+```
 
 ### Cleanup
 
@@ -58,3 +89,5 @@ Stop all database containers:
 ```bash
 npm run db:stop
 ```
+
+It is recommended to to run only 1 database at a time to prevent biasing the results by giving the databases unequal resources.
