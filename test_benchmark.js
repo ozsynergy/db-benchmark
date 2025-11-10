@@ -111,6 +111,22 @@ async function testQueries() {
     console.log(`  Returned ${aggResult ? aggResult.length : 0} results in ${aggTime.toFixed(2)} ms`);
     console.log(aggResult);
 
+    // Update Enrollment
+    console.log('Update Enrollment:');
+    const updateStart = process.hrtime.bigint();
+    const updateResult = await performUpdateEnrollment(client, db || client);
+    const updateEnd = process.hrtime.bigint();
+    const updateTime = Number(updateEnd - updateStart) / 1e6;
+    console.log(`  Update completed in ${updateTime.toFixed(2)} ms`);
+
+    // Delete Enrollment
+    console.log('Delete Enrollment:');
+    const deleteStart = process.hrtime.bigint();
+    const deleteResult = await performDeleteEnrollment(client, db || client);
+    const deleteEnd = process.hrtime.bigint();
+    const deleteTime = Number(deleteEnd - deleteStart) / 1e6;
+    console.log(`  Delete completed in ${deleteTime.toFixed(2)} ms`);
+
   } catch (error) {
     console.error('Error:', error);
   } finally {
@@ -248,6 +264,45 @@ async function performTop5Courses(client, db) {
       }
     });
     return result.aggregations.top_courses.buckets;
+  }
+}
+
+async function performUpdateEnrollment(client, db) {
+  const enrollmentId = Math.floor(Math.random() * 450000) + 1; // Random enrollment ID (up to 450000)
+  const newEnrolledAt = new Date().toISOString(); // New timestamp
+
+  if (serverType === 'mongo') {
+    return db.collection('enrollments').updateOne({ id: enrollmentId }, { $set: { enrolled_at: newEnrolledAt } });
+  } else if (serverType === 'mysql') {
+    const mysqlDateTime = new Date().toISOString().slice(0, 19).replace('T', ' '); // Format for MySQL: YYYY-MM-DD HH:MM:SS
+    return db.execute('UPDATE enrollments SET enrolled_at = ? WHERE id = ?', [mysqlDateTime, enrollmentId]);
+  } else if (serverType === 'postgresql' || serverType === 'alloydb') {
+    return client.query('UPDATE enrollments SET enrolled_at = $1 WHERE id = $2', [newEnrolledAt, enrollmentId]);
+  } else if (serverType === 'elasticsearch') {
+    return db.update({
+      index: 'enrollments',
+      id: enrollmentId.toString(),
+      body: {
+        doc: { enrolled_at: newEnrolledAt }
+      }
+    });
+  }
+}
+
+async function performDeleteEnrollment(client, db) {
+  const enrollmentId = Math.floor(Math.random() * 450000) + 1; // Random enrollment ID (up to 450000)
+
+  if (serverType === 'mongo') {
+    return db.collection('enrollments').deleteOne({ id: enrollmentId });
+  } else if (serverType === 'mysql') {
+    return db.execute('DELETE FROM enrollments WHERE id = ?', [enrollmentId]);
+  } else if (serverType === 'postgresql' || serverType === 'alloydb') {
+    return client.query('DELETE FROM enrollments WHERE id = $1', [enrollmentId]);
+  } else if (serverType === 'elasticsearch') {
+    return db.delete({
+      index: 'enrollments',
+      id: enrollmentId.toString()
+    });
   }
 }
 

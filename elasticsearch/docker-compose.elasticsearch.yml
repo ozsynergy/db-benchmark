@@ -8,8 +8,8 @@ services:
       - xpack.security.http.ssl.enabled=false
     ports:
       - "9200:9200"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
+   # volumes:
+ #     - elasticsearch_data:/usr/share/elasticsearch/data
 
   elasticsearch-init:
     image: curlimages/curl:8.8.0

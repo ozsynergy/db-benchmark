@@ -20,7 +20,6 @@ db.users.createIndex({ "created_at": 1 });
 db.courses.createIndex({ "title": 1 });
 db.courses.createIndex({ "department": 1 });
 db.courses.createIndex({ "instructor_id": 1 });
-db.courses.createIndex({ "title": "text", "description": "text" }); // Full-text search
 db.courses.createIndex({ "created_at": 1 });
 
 // Enrollments collection indexes (to match MySQL unique constraint, use compound unique index)
@@ -28,3 +27,15 @@ db.enrollments.createIndex({ "user_id": 1, "course_id": 1 }, { unique: true });
 db.enrollments.createIndex({ "user_id": 1 });
 db.enrollments.createIndex({ "course_id": 1 });
 db.enrollments.createIndex({ "enrolled_at": 1 });
+
+// Optimized indexes for aggregation performance
+db.enrollments.createIndex({ "course_id": 1, "user_id": 1 }); // Compound index for aggregation queries
+
+// Optimized text search index with weights
+db.courses.createIndex(
+  { "title": "text", "description": "text" },
+  {
+    weights: { title: 10, description: 1 },
+    name: "courses_text_search"
+  }
+);

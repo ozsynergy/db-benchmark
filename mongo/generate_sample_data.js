@@ -97,7 +97,7 @@ async function waitForConnection() {
       return client;
     } catch (err) {
       console.log(`Waiting for MongoDB connection... (${i + 1}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
   throw new Error('Failed to connect to MongoDB after 30 retries');

@@ -11,13 +11,15 @@ The goal of this project is to benchmark five database engines against each othe
 
 Each database contains the same schema and dataset, allowing for direct performance comparisons.
 
-The benchmark performs three different query types:
-- Keyword text search  
-    - find word in string 
+The benchmark performs six different query types:
+- Keyword text search
+    - find word in string
     - find word at start of string
 - Lookup by identifier (e.g., email address)
 - Lookup by multiple factors (department and status)
 - Aggregation (top 5 courses)
+- Update enrollment (update enrolled_at timestamp)
+- Delete enrollment
 
 ## Dataset
 

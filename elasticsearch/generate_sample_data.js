@@ -82,7 +82,7 @@ function generateEnrollments() {
 }
 
 async function bulkInsert(data, index, client) {
-  const operations = data.flatMap(doc => [{ index: { _index: index } }, doc]);
+  const operations = data.flatMap(doc => [{ index: { _index: index, _id: doc.id.toString() } }, doc]);
   const bulkResponse = await client.bulk({ refresh: true, operations });
   if (bulkResponse.errors) {
     console.error('Bulk errors:', bulkResponse);
