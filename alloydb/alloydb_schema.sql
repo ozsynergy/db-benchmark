@@ -29,9 +29,12 @@ CREATE INDEX idx_courses_title ON courses(title);
 CREATE INDEX idx_courses_department ON courses(department);
 CREATE INDEX idx_courses_instructor_id ON courses(instructor_id);
 
--- GIN index for full-text search on title and description
+-- GIN index for trigram similarity search on title and description
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX idx_courses_title_description_gin ON courses USING GIN ((title || ' ' || COALESCE(description, '')) gin_trgm_ops);
+
+-- GiST index for similarity operator support (%) 
+CREATE INDEX idx_courses_title_description_gist ON courses USING GIST ((title || ' ' || COALESCE(description, '')) gist_trgm_ops);
 
 -- Enrollments table for tracking student-course relationships
 CREATE TABLE enrollments (

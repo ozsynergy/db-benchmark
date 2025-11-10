@@ -5,15 +5,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
       MONGO_INITDB_DATABASE: benchmark
-      MONGODB_EXTRA_ARGS: --setParameter wiredTigerCacheSizeGB=1.5
     ports:
       - "27017:27017"
     volumes:
       - ./mongo_schema.js:/docker-entrypoint-initdb.d/init-indexes.js
-    command: --storageEngine=wiredTiger --wiredTigerCacheSizeGB=1 --journalCommitInterval=100
- #   deploy:
- #     resources:
- #       limits:
- #         memory: 2GB
- #       reservations:
-  #        memory: 1GB

@@ -63,7 +63,11 @@ class QueryRunner {
       const [rows] = await client.execute('SELECT * FROM courses WHERE MATCH(title, description) AGAINST(? IN NATURAL LANGUAGE MODE)', [searchTerm]);
       return rows;
     } else if (['postgresql', 'alloydb'].includes(this.serverType)) {
-      const result = await client.query('SELECT * FROM courses WHERE (title || \' \' || COALESCE(description, \'\')) ILIKE $1', [`%${searchTerm}%`]);
+      // Use similarity search with GIN trigram index for better performance
+      const result = await client.query(
+        'SELECT * FROM courses WHERE (title || \' \' || COALESCE(description, \'\')) % $1 ORDER BY similarity((title || \' \' || COALESCE(description, \'\')), $1) DESC',
+        [searchTerm]
+      );
       return result.rows;
     } else if (this.serverType === 'elasticsearch') {
       const result = await client.search({
@@ -93,10 +97,11 @@ class QueryRunner {
       const result = await client.query('SELECT * FROM users WHERE email = $1', [email]);
       return result.rows[0];
     } else if (this.serverType === 'elasticsearch') {
+      // Use term query for exact match on keyword field
       const result = await client.search({
         index: 'users',
         body: {
-          query: { match: { email } }
+          query: { term: { email } }
         }
       });
       return result.hits.hits[0];
