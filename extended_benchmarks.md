@@ -2,7 +2,14 @@
 
 ### Performance Comparison (Average time per request in milliseconds)
 
-| Operation | MySQL | PostgreSQL | AlloyDB | MongoDB | Elasticsearch | |-----------|-------|------------|---------|---------|---------------| | __Keyword Text Search__ | 2.45 | 4.43 | 4.53 | 6.08 | 5.61 | | __Lookup by Identifier__ | 0.28 | 0.25 | __0.22__ | 0.65 | 3.99 | | __Lookup by Multiple Factors__ | 1.34 | 0.89 | __0.78__ | 1.60 | 2.61 | | __Aggregation Top 5 Courses__ | 70.53 | 65.18 | 70.20 | 189.65 | __3.58__ | | __Update Enrollment__ | 9.43 | __3.28__ | 10.32 | 102.47 | 12.73 | | __Delete Enrollment__ | 9.63 | __3.09__ | 7.07 | 111.36 | 12.37 |
+| Operation | MySQL | PostgreSQL | AlloyDB | MongoDB | Elasticsearch |
+|-----------|-------|------------|---------|---------|---------------|
+| __Keyword Text Search__ | 2.45 | 4.43 | 4.53 | 6.08 | 5.61 |
+| __Lookup by Identifier__ | 0.28 | 0.25 | __0.22__ | 0.65 | 3.99 |
+| __Lookup by Multiple Factors__ | 1.34 | 0.89 | __0.78__ | 1.60 | 2.61 |
+| __Aggregation Top 5 Courses__ | 70.53 | 65.18 | 70.20 | 189.65 | __3.58__ |
+| __Update Enrollment__ | 9.43 | __3.28__ | 10.32 | 102.47 | 12.73 |
+| __Delete Enrollment__ | 9.63 | __3.09__ | 7.07 | 111.36 | 12.37 |
 
 ## Updated Key Findings & Analysis
 
