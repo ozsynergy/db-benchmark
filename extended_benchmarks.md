@@ -8,6 +8,7 @@
 | __Lookup by Identifier__ | 0.28 | 0.25 | __0.22__ | 0.65 | 3.99 |
 | __Lookup by Multiple Factors__ | 1.34 | 0.89 | __0.78__ | 1.60 | 2.61 |
 | __Aggregation Top 5 Courses__ | 70.53 | 65.18 | 70.20 | 189.65 | __3.58__ |
+| __Insert Enrollment__ | 10.48 | 3.04 | 3.62 | 0.48 | 10.60 |
 | __Update Enrollment__ | 9.43 | __3.28__ | 10.32 | 102.47 | 12.73 |
 | __Delete Enrollment__ | 9.63 | __3.09__ | 7.07 | 111.36 | 12.37 |
 
@@ -39,10 +40,16 @@ __Fastest Aggregations:__
 - PostgreSQL: 65.18ms
 - AlloyDB: 70.20ms
 
+__Fastest Inserts:__
+
+- __MongoDB__: 0.48ms (exceptional document insert performance)
+- PostgreSQL: 3.04ms
+- AlloyDB: 3.62ms
+
 __Fastest Writes:__
 
-- __PostgreSQL__: Update 3.28ms, Delete 3.09ms
-- AlloyDB: Update 10.32ms, Delete 7.07ms
+- __PostgreSQL__: Insert 3.04ms, Update 3.28ms, Delete 3.09ms
+- AlloyDB: Insert 3.62ms, Update 10.32ms, Delete 7.07ms
 
 ### 2. __AlloyDB Performance Analysis__
 
@@ -139,3 +146,45 @@ __MongoDB Update Performance Issues:__
 - __31x slower__ than PostgreSQL, __10x slower__ than Elasticsearch
 - Indicates potential indexing, locking, or configuration problems
 - May be experiencing write amplification or poor storage engine tuning
+
+## 7. __Insert Performance Analysis__
+
+### Insert Operation Performance Rankings:
+
+1. __MongoDB: 0.48ms__ - Exceptional insert performance for document databases
+2. __PostgreSQL: 3.04ms__ - Excellent relational insert performance
+3. __AlloyDB: 3.62ms__ - Strong cloud-managed insert performance
+4. __MySQL: 10.48ms__ - Solid traditional RDBMS insert performance
+5. __Elasticsearch: 10.60ms__ - Moderate document insert performance
+
+### Key Insert Performance Insights:
+
+__MongoDB's Insert Dominance:__
+
+- __0.48ms__ average insert time - __6x faster__ than PostgreSQL, __22x faster__ than MySQL
+- Document model excels at unstructured data insertion
+- Minimal overhead for schema-less inserts with automatic ID generation
+
+__PostgreSQL's Reliable Inserts:__
+
+- __3.04ms__ - consistent with PostgreSQL's ACID compliance and transaction safety
+- Excellent balance of performance and data integrity
+- WAL optimization provides reliable insert performance
+
+__AlloyDB's Cloud-Optimized Inserts:__
+
+- __3.62ms__ - competitive with self-hosted PostgreSQL
+- Google's cloud infrastructure optimizations benefit insert operations
+- Slightly slower than PostgreSQL but better than MySQL
+
+__MySQL's Traditional Insert Performance:__
+
+- __10.48ms__ - reasonable for InnoDB storage engine
+- ACID compliance and indexing add overhead
+- Slower than PostgreSQL due to different storage architecture
+
+__Elasticsearch Insert Characteristics:__
+
+- __10.60ms__ - acceptable for a search engine with document indexing
+- Insert operations require immediate indexing and potential shard rebalancing
+- Better suited for bulk inserts than individual document insertions

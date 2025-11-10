@@ -8,6 +8,9 @@ const args = process.argv.slice(2);
 const serverType = args[0];
 const requestCount = parseInt(args[1]) || 100;
 
+// Global counter for insert IDs
+let enrollmentIdCounter = 500001;
+
 if (!serverType || !['mongo', 'mysql', 'postgresql', 'alloydb', 'elasticsearch'].includes(serverType)) {
   console.error('Usage: node benchmark.js <server type> [request count]');
   console.error('server type: mongo, mysql, postgresql, alloydb, elasticsearch');
@@ -79,6 +82,7 @@ async function runBenchmarks() {
       { name: 'Lookup by Identifier', func: () => performLookupByIdentifier(client, db || client) },
       { name: 'Lookup by Multiple Factors', func: () => performLookupByMultipleFactors(client, db || client) },
       { name: 'Aggregation Top 5 Courses', func: () => performTop5Courses(client, db || client) },
+      { name: 'Insert Enrollment', func: () => performInsertEnrollment(client, db || client) },
       { name: 'Update Enrollment', func: () => performUpdateEnrollment(client, db || client) },
       { name: 'Delete Enrollment', func: () => performDeleteEnrollment(client, db || client) }
     ];
@@ -232,6 +236,28 @@ async function performTop5Courses(client, db) {
       }
     });
     return result.aggregations.top_courses.buckets;
+  }
+}
+
+async function performInsertEnrollment(client, db) {
+  const id = enrollmentIdCounter++;
+  const userId = Math.floor(Math.random() * 19900) + 101; // 101-20000
+  const courseId = Math.floor(Math.random() * 45000) + 1; // 1-45000
+  const enrolledAt = new Date().toISOString();
+
+  if (serverType === 'mongo') {
+    return db.collection('enrollments').insertOne({ id, user_id: userId, course_id: courseId, enrolled_at: enrolledAt });
+  } else if (serverType === 'mysql') {
+    const mysqlDateTime = enrolledAt.slice(0, 19).replace('T', ' '); // Format for MySQL: YYYY-MM-DD HH:MM:SS
+    return db.execute('INSERT INTO enrollments (id, user_id, course_id, enrolled_at) VALUES (?, ?, ?, ?)', [id, userId, courseId, mysqlDateTime]);
+  } else if (serverType === 'postgresql' || serverType === 'alloydb') {
+    return client.query('INSERT INTO enrollments (id, user_id, course_id, enrolled_at) VALUES ($1, $2, $3, $4)', [id, userId, courseId, enrolledAt]);
+  } else if (serverType === 'elasticsearch') {
+    return db.index({
+      index: 'enrollments',
+      id: id.toString(),
+      body: { id, user_id: userId, course_id: courseId, enrolled_at: enrolledAt }
+    });
   }
 }
 
