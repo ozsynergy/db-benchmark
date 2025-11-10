@@ -68,11 +68,12 @@ Note: The PostgreSQL and AlloyDB scripts check for existing data and only insert
 Execute the benchmark script:
 
 ```bash
-node benchmark.js <server type> <request count>
+node benchmark.js [--debug] <server type> [request count]
 ```
 
+- `--debug`: run in debug mode (single request per query with detailed output)
 - `<server type>`: alloydb, mongo, mysql, postgresql, elasticsearch
-- `<request count>`: number of requests per test (optional, default 100)
+- `<request count>`: number of requests per test (optional, default 100, ignored in debug mode)
 
 Alternatively, use the convenience scripts that start the database, seed data, run benchmarks, and stop the database:
 

@@ -11,9 +11,9 @@ services:
     volumes:
       - ./mongo_schema.js:/docker-entrypoint-initdb.d/init-indexes.js
     command: --storageEngine=wiredTiger --wiredTigerCacheSizeGB=1 --journalCommitInterval=100
-    deploy:
-      resources:
-        limits:
-          memory: 2GB
-        reservations:
-          memory: 1GB
+ #   deploy:
+ #     resources:
+ #       limits:
+ #         memory: 2GB
+ #       reservations:
+  #        memory: 1GB
