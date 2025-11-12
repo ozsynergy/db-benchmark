@@ -258,6 +258,62 @@ class QueryRunner {
     }
     return null;
   }
+
+  async getDatabaseSize() {
+    const client = this.connector.getClient();
+
+    if (this.serverType === 'mongo') {
+      const stats = await client.stats();
+      return {
+        dataSize: stats.dataSize,
+        storageSize: stats.storageSize,
+        indexSize: stats.indexSize,
+        totalSize: stats.storageSize + stats.indexSize,
+        formatted: this.formatBytes(stats.storageSize + stats.indexSize)
+      };
+    } else if (this.serverType === 'mysql') {
+      const [rows] = await client.execute(`
+        SELECT 
+          SUM(data_length + index_length) as total_size,
+          SUM(data_length) as data_size,
+          SUM(index_length) as index_size
+        FROM information_schema.TABLES
+        WHERE table_schema = 'benchmark'
+      `);
+      const totalSize = parseInt(rows[0].total_size || 0);
+      return {
+        dataSize: parseInt(rows[0].data_size || 0),
+        indexSize: parseInt(rows[0].index_size || 0),
+        totalSize: totalSize,
+        formatted: this.formatBytes(totalSize)
+      };
+    } else if (['postgresql', 'alloydb'].includes(this.serverType)) {
+      const result = await client.query(`
+        SELECT pg_database_size('benchmark') as total_size
+      `);
+      const totalSize = parseInt(result.rows[0].total_size);
+      return {
+        totalSize: totalSize,
+        formatted: this.formatBytes(totalSize)
+      };
+    } else if (this.serverType === 'elasticsearch') {
+      const stats = await client.indices.stats({ index: '_all' });
+      const totalSize = stats._all.primaries.store.size_in_bytes;
+      return {
+        totalSize: totalSize,
+        formatted: this.formatBytes(totalSize)
+      };
+    }
+    return null;
+  }
+
+  formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
 }
 
 class Benchmark {
@@ -348,6 +404,16 @@ class Benchmark {
       }
       const avg = times.reduce((a, b) => a + b, 0) / times.length;
       console.log(`${query.name}: Average time per request: ${avg.toFixed(2)} ms`);
+    }
+
+    // Display database size at the end
+    console.log();
+    const dbSize = await this.queryRunner.getDatabaseSize();
+    if (dbSize) {
+      console.log(`Database Size: ${dbSize.formatted}`);
+      if (dbSize.dataSize !== undefined) {
+        console.log(`  Data: ${this.queryRunner.formatBytes(dbSize.dataSize)}, Index: ${this.queryRunner.formatBytes(dbSize.indexSize)}`);
+      }
     }
   }
 
