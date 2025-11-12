@@ -35,6 +35,12 @@ Sample data generated: 1000 users, 100 courses, 2000 enrollments.
 cd data
 wget https://huggingface.co/spaces/Kamand/Movie_Recommendation/resolve/main/movies_metadata.csv
 
+### Install dependencies (required for the first time)
+```
+## In the parent folder
+npm install
+```
+
 ## Usage
 
 ### Starting a Database Server
@@ -74,6 +80,11 @@ node benchmark.js [--debug] <server type> [request count]
 - `--debug`: run in debug mode (single request per query with detailed output)
 - `<server type>`: alloydb, mongo, mysql, postgresql, elasticsearch
 - `<request count>`: number of requests per test (optional, default 100, ignored in debug mode)
+
+If you would like to see the MongoDB query plan and print it to the screen along with test result, you can add `--explain` option. Example as below
+```bash
+node benchmark.js mongo --explain 
+```
 
 Alternatively, use the convenience scripts that start the database, seed data, run benchmarks, and stop the database:
 
