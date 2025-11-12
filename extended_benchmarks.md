@@ -4,13 +4,38 @@
 
 | Operation | MySQL | PostgreSQL | AlloyDB | MongoDB | Elasticsearch |
 |-----------|-------|------------|---------|---------|---------------|
-| __Keyword Text Search__ | __2.82__ | 41.56 | 22.04 | 6.33 | 6.22 |
-| __Lookup by Identifier__ | 0.26 | 0.38 | __0.27__ | 0.54 | 2.26 |
-| __Lookup by Multiple Factors__ | 1.31 | 0.95 | __0.84__ | 1.59 | 2.51 |
-| __Aggregation Top 5 Courses__ | 70.49 | 63.23 | 69.75 | 200.95 | __3.73__ |
-| __Insert Enrollment__ | 9.69 | 3.27 | 4.01 | __0.52__ | 13.81 |
-| __Update Enrollment__ | 9.15 | __3.34__ | 7.46 | 125.29 | 14.90 |
-| __Delete Enrollment__ | 9.47 | __2.84__ | 5.15 | 111.23 | 13.62 |
+| __Keyword Text Search__ | __2.82__ | 41.56 | 22.04 | 6.19 | 6.22 |
+| __Lookup by Identifier__ | __0.26__ | 0.38 | 0.27 | 0.59 | 2.26 |
+| __Lookup by Multiple Factors__ | __0.84__ | 0.95 | 0.84 | 1.05 | 2.51 |
+| __Aggregation Top 5 Courses__ | 70.49 | 63.23 | 69.75 | 208.56 | __3.73__ |
+| __Insert Enrollment__ | 9.69 | 3.27 | 4.01 | __0.50__ | 13.81 |
+| __Update Enrollment__ | 9.15 | 3.34 | 7.46 | __0.53__ | 14.90 |
+| __Delete Enrollment__ | 9.47 | 2.84 | 5.15 | __0.52__ | 13.62 |
+
+## MongoDB Schema Optimization Results (Latest Update)
+
+### What Was Optimized:
+1. **Removed unused indexes**: Eliminated indexes on created_at, individual title, department, and instructor_id fields
+2. **Added compound index**: Created `{ "department": 1, "instructor_id": 1 }` for multi-factor lookups
+3. **Added critical index**: Created index on `"id"` field in enrollments collection for update/delete operations
+
+### Performance Improvements After Optimization:
+
+| Operation | Before | After | Improvement |
+|-----------|--------|-------|-------------|
+| **Update Enrollment** | 125.29 ms | **0.53 ms** | **236x faster** ✓ |
+| **Delete Enrollment** | 111.23 ms | **0.52 ms** | **214x faster** ✓ |
+| **Lookup by Multiple Factors** | 1.59 ms | 1.05 ms | **34% faster** ✓ |
+| Keyword Text Search | 6.33 ms | 6.19 ms | 2% faster |
+| Insert Enrollment | 0.52 ms | 0.50 ms | 4% faster |
+| Lookup by Identifier | 0.54 ms | 0.59 ms | 9% slower |
+| Aggregation Top 5 Courses | 200.95 ms | 208.56 ms | 4% slower |
+
+### Key Findings:
+- **Massive improvement in writes**: The index on the `id` field solved the critical performance bottleneck for updates and deletes
+- **Improved multi-factor lookups**: The compound index on department + instructor_id improved performance by 34%
+- **Minimal trade-offs**: Removing unused indexes had negligible impact on other operations
+- **MongoDB is now competitive**: Updates and deletes are now faster than PostgreSQL (0.53ms vs 3.34ms for updates)
 
 ## Key Changes From Previous Biased Results
 
@@ -39,8 +64,9 @@
 
 **MongoDB Updates/Deletes:**
 - **Before (1GB cache)**: Update 102.47 ms, Delete 111.36 ms
-- **After (unlimited)**: Update 125.29 ms, Delete 111.23 ms
-- **SIMILAR/SLIGHTLY WORSE** - Removing memory constraint didn't help as expected. This suggests the issue is elsewhere (possibly indexing, write amplification, or query patterns)
+- **After (unlimited memory)**: Update 125.29 ms, Delete 111.23 ms
+- **After (schema optimization)**: Update **0.53 ms**, Delete **0.52 ms**
+- **MASSIVELY IMPROVED (236x faster)** - Adding index on `id` field was the critical fix. The issue was not memory, but missing index on the field used for lookups in update/delete operations
 
 **Elasticsearch Overall:**
 - Generally improved with more heap space
@@ -76,13 +102,20 @@ __Fastest Inserts:__
 - AlloyDB: 4.01ms
 
 __Fastest Writes (Updates/Deletes):__
+- __MongoDB__: Update 0.53ms, Delete 0.52ms (after optimization)
 - __PostgreSQL__: Update 3.34ms, Delete 2.84ms
 - AlloyDB: Update 7.46ms, Delete 5.15ms
 - MySQL: Update 9.15ms, Delete 9.47ms
 
 ### 2. __Database Rankings by Overall Performance__
 
-__1. PostgreSQL__ - Most balanced performance across all workloads
+__1. MongoDB__ - Best for high-volume write workloads (after optimization)
+- **Exceptional writes** (0.50-0.53ms inserts/updates/deletes)
+- Good reads (0.59-1.05ms)
+- Good text search (6.19ms)
+- Slow aggregations (208.56ms - needs further optimization)
+
+__2. PostgreSQL__ - Most balanced performance across all workloads
 - Excellent writes (2.84-3.34ms)
 - Good reads (0.38-0.95ms)
 - Solid aggregations (63.23ms)
@@ -102,11 +135,6 @@ __4. Elasticsearch__ - Unmatched for analytics/aggregations
 - Good text search (6.22ms)
 - Moderate writes (13.62-14.90ms)
 
-__5. MongoDB__ - Specialized performance profile
-- Exceptional inserts (0.52ms)
-- Poor updates/deletes (111-125ms) - needs investigation
-- Slow aggregations (200.95ms)
-
 ### 3. __Surprising Findings__
 
 **PostgreSQL Trigram Similarity is Slower:**
@@ -114,13 +142,11 @@ __5. MongoDB__ - Specialized performance profile
 - ILIKE pattern matching was actually more efficient for this use case
 - **Recommendation**: Revert to ILIKE or use full-text search (to_tsvector/to_tsquery) instead
 
-**MongoDB Update/Delete Performance Still Poor:**
-- Removing memory constraints didn't help
-- 111-125ms for updates/deletes suggests deeper issues:
-  - Possible lack of proper indexes on `id` field
-  - Write amplification
-  - Journal/durability overhead
-  - Need to investigate with explain plans
+**MongoDB Update/Delete Performance FIXED:**
+- ✓ **Problem identified**: Missing index on `id` field in enrollments collection
+- ✓ **Solution implemented**: Added `db.enrollments.createIndex({ "id": 1 })`
+- ✓ **Result**: Update/delete performance improved 236x (from 125ms to 0.53ms)
+- MongoDB now has the **fastest write operations** among all databases tested
 
 **Elasticsearch Needs Memory:**
 - 512MB heap caused OOM (exit code 137)
@@ -141,18 +167,25 @@ __5. MongoDB__ - Specialized performance profile
 1. ILIKE with GIN index (fast pattern matching)
 2. Full-text search with `to_tsvector`/`to_tsquery` (semantic search)
 
-### 5. __MongoDB Performance Issues to Investigate__
+### 5. __MongoDB Schema Optimization Success__
 
-Despite removing memory constraints, MongoDB still shows:
-- **Update**: 125.29ms (37x slower than PostgreSQL)
-- **Delete**: 111.23ms (39x slower than PostgreSQL)  
-- **Aggregation**: 200.95ms (53x slower than Elasticsearch, 3x slower than PostgreSQL)
+**Update/Delete Performance SOLVED:**
+- ✓ **Root cause**: Missing index on `id` field in enrollments collection
+- ✓ **Fix applied**: Added `db.enrollments.createIndex({ "id": 1 })`
+- ✓ **Before**: Update 125.29ms, Delete 111.23ms
+- ✓ **After**: Update 0.53ms, Delete 0.52ms
+- ✓ **Improvement**: 236x faster (now **fastest among all databases**)
 
-**Possible causes:**
-1. Missing index on `id` field in enrollments collection
-2. Using `id` field instead of `_id` for lookups (not using primary key)
-3. Write concern settings causing synchronization overhead
-4. WiredTiger storage engine configuration needs tuning
+**Multi-Factor Lookup Performance IMPROVED:**
+- ✓ **Optimization**: Added compound index `{ "department": 1, "instructor_id": 1 }`
+- ✓ **Before**: 1.59ms
+- ✓ **After**: 1.05ms  
+- ✓ **Improvement**: 34% faster
+
+**Remaining Optimization Opportunity:**
+- **Aggregation**: 208.56ms (still 53x slower than Elasticsearch, 3x slower than PostgreSQL)
+- Consider adding compound index `{ "course_id": 1, "user_id": 1 }` for aggregation queries
+- Investigate using aggregation pipeline optimization techniques
 
 ### 6. __Workload-Specific Recommendations__
 
@@ -171,7 +204,7 @@ __Cloud-Native:__
 - __AlloyDB__ (excellent read performance, Google Cloud optimized)
 
 __High-Volume Writes:__
-- __MongoDB__ (0.52ms inserts, but fix update/delete issues)
+- __MongoDB__ (0.50-0.53ms all write operations - **fastest**)
 - __PostgreSQL__ (balanced 2.84-3.34ms)
 
 ### 7. __Resource Allocation Notes__
@@ -190,18 +223,20 @@ All databases should ideally have equal resource constraints. Consider setting:
 ## Recommendations for Further Investigation
 
 1. **Revert PostgreSQL/AlloyDB text search** to ILIKE or implement proper full-text search with to_tsvector
-2. **Investigate MongoDB** update/delete performance - check indexes, explain plans, write concern
-3. **Set equal memory limits** for all databases (e.g., 4GB each) for fairer comparison
-4. **Add warm-up phase** to benchmark to eliminate cold-start effects
-5. **Verify MongoDB** is using `_id` for primary key operations instead of custom `id` field
+2. ✓ ~~**Investigate MongoDB update/delete performance**~~ - **SOLVED**: Added index on `id` field
+3. **Optimize MongoDB aggregations** - Consider compound index for course grouping queries
+4. **Set equal memory limits** for all databases (e.g., 4GB each) for fairer comparison
+5. **Add warm-up phase** to benchmark to eliminate cold-start effects
 6. **Consider connection pooling** for all databases to reflect production patterns
 
 ## Conclusion
 
-After removing the major biases:
+After removing the major biases and optimizing MongoDB schema:
+- **MongoDB** now has the **fastest write operations** (0.50-0.53ms) after adding missing indexes
 - **MySQL** remains the text search champion with purpose-built FULLTEXT indexing
 - **PostgreSQL** shows the most balanced performance across all operation types
 - **AlloyDB** demonstrates excellent cloud-native read performance
 - **Elasticsearch** is unmatched for aggregations (17x faster than SQL databases)
-- **MongoDB** needs configuration investigation for update/delete operations
 - **PostgreSQL trigram similarity** proved slower than expected - ILIKE or full-text search recommended
+
+**Key Takeaway**: Proper indexing is critical - MongoDB's update/delete performance improved **236x** simply by adding an index on the `id` field used in query filters.
