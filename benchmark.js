@@ -145,7 +145,10 @@ class QueryRunner {
         { $group: { _id: '$course_id', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
         { $limit: 5 }
-      ]).toArray();
+      ],
+      {
+          hint: { "course_id": 1 }
+      }).toArray();
     } else if (this.serverType === 'mysql') {
       const [rows] = await client.execute(`
         SELECT course_id, COUNT(*) as count
@@ -258,10 +261,11 @@ class QueryRunner {
 }
 
 class Benchmark {
-  constructor(serverType, requestCount = 100, debug = false) {
+  constructor(serverType, requestCount = 100, debug = false, showQueryPlan = false) {
     this.serverType = serverType;
     this.requestCount = requestCount;
     this.debug = debug;
+    this.showQueryPlan = showQueryPlan;
     this.enrollmentIdCounter = 500001;
 
     this.config = {
@@ -312,6 +316,11 @@ class Benchmark {
   async run() {
     try {
       await this.connector.connect();
+
+      // Run query plans if requested
+      if (this.showQueryPlan) {
+        await explainAllMongoQueries(this.connector.getClient(), this.serverType, this.showQueryPlan);
+      }
 
       if (this.debug) {
         await this.runDebug();
@@ -407,26 +416,110 @@ class Benchmark {
   }
 }
 
+// Function to run all MongoDB query plans once
+async function explainAllMongoQueries(db, serverType, showQueryPlan) {
+  if (serverType !== 'mongo' || !showQueryPlan) {
+    return;
+  }
+
+  console.log('\n=== MongoDB Query Execution Plans ===\n');
+
+  try {
+    // 1. Keyword Text Search
+    const searchTerm = 'course';
+    const keywordExplain = await db.collection('courses').find({ $text: { $search: searchTerm } }).explain('executionStats');
+    console.log('1. Keyword Text Search Explain:');
+    console.log(JSON.stringify(keywordExplain.executionStats, null, 2));
+    console.log('---\n');
+
+    // 2. Lookup by Identifier
+    const email = 'user500@example.com'; // Fixed email for consistent explain
+    const identifierExplain = await db.collection('users').find({ email }).explain('executionStats');
+    console.log('2. Lookup by Identifier Explain:');
+    console.log(JSON.stringify(identifierExplain.executionStats, null, 2));
+    console.log('---\n');
+
+    // 3. Lookup by Multiple Factors
+    const department = 'Computer Science';
+    const instructorId = 50; // Fixed instructor for consistent explain
+    const multiFactorExplain = await db.collection('courses').find({ department, instructor_id: instructorId }).explain('executionStats');
+    console.log('3. Lookup by Multiple Factors Explain:');
+    console.log(JSON.stringify(multiFactorExplain.executionStats, null, 2));
+    console.log('---\n');
+
+    // 4. Top 5 Courses Aggregation (Atlas Search Facet)
+   const aggregationExplain = await db.collection('enrollments').aggregate([
+        { $group: { _id: '$course_id', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 }
+      ],
+      {
+            hint: { "course_id": 1 }
+      }).explain('executionStats');
+    console.log('4. Top 5 Courses Aggregation Explain:');
+    // For aggregation, the structure might be different - check multiple possible locations
+    if (aggregationExplain.executionStats) {
+      console.log(JSON.stringify(aggregationExplain.executionStats, null, 2));
+    } else if (aggregationExplain.stages) {
+      console.log(JSON.stringify(aggregationExplain.stages, null, 2));
+    } else {
+      console.log(JSON.stringify(aggregationExplain, null, 2));
+    }
+    console.log('---\n');
+
+    // 5. Update Enrollment (explain the find part)
+    const updateId = 12345; // Fixed ID for consistent explain
+    const updateExplain = await db.collection('enrollments').find({ id: updateId }).explain('executionStats');
+    console.log('5. Update Enrollment (filter) Explain:');
+    console.log(JSON.stringify(updateExplain.executionStats, null, 2));
+    console.log('---\n');
+
+    // 6. Delete Enrollment (explain the find part)
+    const deleteId = 12345; // Fixed ID for consistent explain
+    const deleteExplain = await db.collection('enrollments').find({ id: deleteId }).explain('executionStats');
+    console.log('6. Delete Enrollment (filter) Explain:');
+    console.log(JSON.stringify(deleteExplain.executionStats, null, 2));
+    console.log('---\n');
+
+    console.log('=== End of Query Plans ===\n');
+
+  } catch (error) {
+    console.error('Error explaining queries:', error.message);
+  }
+}
+
 // Parse command line arguments
 const args = process.argv.slice(2);
 let debug = false;
+let showQueryPlan = false;
 let serverTypeIndex = 0;
 
 if (args.includes('--debug')) {
   debug = true;
-  serverTypeIndex = args.indexOf('--debug') === 0 ? 1 : 0;
+}
+if (args.includes('--explain')) {
+  showQueryPlan = true;
+}
+
+// Find the server type index (first non-flag argument)
+for (let i = 0; i < args.length; i++) {
+  if (!args[i].startsWith('--')) {
+    serverTypeIndex = i;
+    break;
+  }
 }
 
 const serverType = args[serverTypeIndex];
 const requestCount = debug ? 1 : parseInt(args[serverTypeIndex + 1]) || 100;
 
 if (!serverType || !['mongo', 'mysql', 'postgresql', 'alloydb', 'elasticsearch'].includes(serverType)) {
-  console.error('Usage: node benchmark.js [--debug] <server type> [request count]');
+  console.error('Usage: node benchmark.js [--debug] [--explain] <server type> [request count]');
   console.error('server type: mongo, mysql, postgresql, alloydb, elasticsearch');
   console.error('request count: number of requests per test (default: 100, ignored in debug mode)');
   console.error('--debug: run in debug mode (single request per query with detailed output)');
+  console.error('--explain: show MongoDB query execution plans (MongoDB only)');
   process.exit(1);
 }
 
-const benchmark = new Benchmark(serverType, requestCount, debug);
+const benchmark = new Benchmark(serverType, requestCount, debug, showQueryPlan);
 benchmark.run();
