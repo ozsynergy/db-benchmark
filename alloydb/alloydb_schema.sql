@@ -24,17 +24,23 @@ CREATE TABLE courses (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- Indexes for text search and filters
-CREATE INDEX idx_courses_title ON courses(title);
+-- Indexes for filters
 CREATE INDEX idx_courses_department ON courses(department);
 CREATE INDEX idx_courses_instructor_id ON courses(instructor_id);
 
--- GIN index for trigram similarity search on title and description
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE INDEX idx_courses_title_description_gin ON courses USING GIN ((title || ' ' || COALESCE(description, '')) gin_trgm_ops);
+-- Add tsvector column for optimized full-text search
+ALTER TABLE courses ADD COLUMN tsv_title_description tsvector 
+  GENERATED ALWAYS AS (
+    to_tsvector('english', COALESCE(title, '') || ' ' || COALESCE(description, ''))
+  ) STORED;
 
--- GiST index for similarity operator support (%) 
-CREATE INDEX idx_courses_title_description_gist ON courses USING GIST ((title || ' ' || COALESCE(description, '')) gist_trgm_ops);
+-- GIN index for full-text search (much faster than trigram similarity)
+CREATE INDEX idx_courses_fts ON courses USING GIN (tsv_title_description);
+
+-- Keep GIN trigram index as fallback for ILIKE queries
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX idx_courses_title_trgm ON courses USING GIN (title gin_trgm_ops);
+CREATE INDEX idx_courses_description_trgm ON courses USING GIN (description gin_trgm_ops);
 
 -- Enrollments table for tracking student-course relationships
 CREATE TABLE enrollments (

@@ -63,9 +63,9 @@ class QueryRunner {
       const [rows] = await client.execute('SELECT * FROM courses WHERE MATCH(title, description) AGAINST(? IN NATURAL LANGUAGE MODE)', [searchTerm]);
       return rows;
     } else if (['postgresql', 'alloydb'].includes(this.serverType)) {
-      // Use similarity search with GIN trigram index for better performance
+      // Use native PostgreSQL full-text search with GIN index for optimal performance
       const result = await client.query(
-        'SELECT * FROM courses WHERE (title || \' \' || COALESCE(description, \'\')) % $1 ORDER BY similarity((title || \' \' || COALESCE(description, \'\')), $1) DESC',
+        'SELECT * FROM courses WHERE tsv_title_description @@ to_tsquery(\'english\', $1) ORDER BY ts_rank(tsv_title_description, to_tsquery(\'english\', $1)) DESC',
         [searchTerm]
       );
       return result.rows;

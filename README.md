@@ -28,7 +28,7 @@ The databases contain the following tables/collections:
 - **Courses**: id, title, description, department, instructor_id, created_at
 - **Enrollments**: id, user_id, course_id, enrolled_at
 
-Sample data generated: 1000 users, 100 courses, 2000 enrollments.
+Sample data generated: 20000 users, 45000 courses, 450000 enrollments.
 
 ## Install
 
@@ -105,3 +105,6 @@ npm run db:stop
 ```
 
 It is recommended to to run only 1 database at a time to prevent biasing the results by giving the databases unequal resources.
+
+# Other benchmarking articles
+ - https://thenewstack.io/benchmarking-postgresql-vs-mongodb-for-genai/
