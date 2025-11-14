@@ -4,39 +4,15 @@
 
 | Operation | MySQL | PostgreSQL | AlloyDB | MongoDB | Elasticsearch |
 |-----------|-------|------------|---------|---------|---------------|
-| __Keyword Text Search__ | __2.82__ | 41.56 | 22.04 | 6.19 | 6.22 |
-| __Lookup by Identifier__ | __0.26__ | 0.38 | 0.27 | 0.59 | 2.26 |
-| __Lookup by Multiple Factors__ | __0.84__ | 0.95 | 0.84 | 1.05 | 2.51 |
-| __Aggregation Top 5 Courses__ | 70.49 | 63.23 | 69.75 | 208.56 | __3.73__ |
-| __Insert Enrollment__ | 9.69 | 3.27 | 4.01 | __0.50__ | 13.81 |
-| __Update Enrollment__ | 9.15 | 3.34 | 7.46 | __0.53__ | 14.90 |
-| __Delete Enrollment__ | 9.47 | 2.84 | 5.15 | __0.52__ | 13.62 |
-| __Database Size__ | 78.22 MB | 175.22 MB | 198.79 MB | __67.89 MB__ | __60.01 MB__ |
+| __Keyword Text Search__ | __2.82__ | 4.32 | 4.24 | 6.19 | 6.22 |
+| __Lookup by Identifier__ | __0.26__ | 0.30 | 0.23 | 0.59 | 2.26 |
+| __Lookup by Multiple Factors__ | __0.84__ | 1.00 | 0.89 | 1.05 | 2.51 |
+| __Aggregation Top 5 Courses__ | 70.49 | 63.35 | 69.38 | 208.56 | __3.73__ |
+| __Insert Enrollment__ | 9.69 | 3.44 | 3.72 | __0.50__ | 13.81 |
+| __Update Enrollment__ | 9.15 | 2.99 | 5.24 | __0.53__ | 14.90 |
+| __Delete Enrollment__ | 9.47 | 2.88 | 4.50 | __0.52__ | 13.62 |
+| __Database Size__ | 78.22 MB | 158.7 MB | 183.31 MB | __67.89 MB__ | __60.01 MB__ |
 
-## MongoDB Schema Optimization Results (Latest Update)
-
-### What Was Optimized:
-1. **Removed unused indexes**: Eliminated indexes on created_at, individual title, department, and instructor_id fields
-2. **Added compound index**: Created `{ "department": 1, "instructor_id": 1 }` for multi-factor lookups
-3. **Added critical index**: Created index on `"id"` field in enrollments collection for update/delete operations
-
-### Performance Improvements After Optimization:
-
-| Operation | Before | After | Improvement |
-|-----------|--------|-------|-------------|
-| **Update Enrollment** | 125.29 ms | **0.53 ms** | **236x faster** ✓ |
-| **Delete Enrollment** | 111.23 ms | **0.52 ms** | **214x faster** ✓ |
-| **Lookup by Multiple Factors** | 1.59 ms | 1.05 ms | **34% faster** ✓ |
-| Keyword Text Search | 6.33 ms | 6.19 ms | 2% faster |
-| Insert Enrollment | 0.52 ms | 0.50 ms | 4% faster |
-| Lookup by Identifier | 0.54 ms | 0.59 ms | 9% slower |
-| Aggregation Top 5 Courses | 200.95 ms | 208.56 ms | 4% slower |
-
-### Key Findings:
-- **Massive improvement in writes**: The index on the `id` field solved the critical performance bottleneck for updates and deletes
-- **Improved multi-factor lookups**: The compound index on department + instructor_id improved performance by 34%
-- **Minimal trade-offs**: Removing unused indexes had negligible impact on other operations
-- **MongoDB is now competitive**: Updates and deletes are now faster than PostgreSQL (0.53ms vs 3.34ms for updates)
 
 ## Key Changes From Previous Biased Results
 
@@ -79,33 +55,35 @@
 
 __Fastest Text Search:__
 - __MySQL__: 2.82ms (FULLTEXT index dominates)
+- PostgreSQL: 4.32ms (full-text search optimized)
+- AlloyDB: 4.24ms (full-text search optimized)
 - Elasticsearch: 6.22ms (optimized for search)
-- MongoDB: 6.33ms (text index)
+- MongoDB: 6.19ms (text index)
 
 __Fastest Point Lookups:__
+- __AlloyDB__: 0.23ms (cloud-native excellence)
 - __MySQL__: 0.26ms
-- __AlloyDB__: 0.27ms (cloud-native excellence)
-- PostgreSQL: 0.38ms
+- PostgreSQL: 0.30ms
 
 __Fastest Complex Queries:__
-- __AlloyDB__: 0.84ms (impressive)
-- PostgreSQL: 0.95ms
-- MySQL: 1.31ms
+- __MySQL__: 0.84ms
+- __AlloyDB__: 0.89ms (impressive)
+- PostgreSQL: 1.00ms
 
 __Fastest Aggregations:__
 - __Elasticsearch__: 3.73ms (designed for analytics - 17x faster!)
-- PostgreSQL: 63.23ms
-- AlloyDB: 69.75ms
+- PostgreSQL: 63.35ms
+- AlloyDB: 69.38ms
 
 __Fastest Inserts:__
-- __MongoDB__: 0.52ms (document model excels)
-- PostgreSQL: 3.27ms
-- AlloyDB: 4.01ms
+- __MongoDB__: 0.50ms (document model excels)
+- PostgreSQL: 3.44ms
+- AlloyDB: 3.72ms
 
 __Fastest Writes (Updates/Deletes):__
 - __MongoDB__: Update 0.53ms, Delete 0.52ms (after optimization)
-- __PostgreSQL__: Update 3.34ms, Delete 2.84ms
-- AlloyDB: Update 7.46ms, Delete 5.15ms
+- __PostgreSQL__: Update 2.99ms, Delete 2.88ms
+- AlloyDB: Update 5.24ms, Delete 4.50ms
 - MySQL: Update 9.15ms, Delete 9.47ms
 
 ### 2. __Database Rankings by Overall Performance__
@@ -117,14 +95,14 @@ __1. MongoDB__ - Best for high-volume write workloads (after optimization)
 - Slow aggregations (208.56ms - needs further optimization)
 
 __2. PostgreSQL__ - Most balanced performance across all workloads
-- Excellent writes (2.84-3.34ms)
-- Good reads (0.38-0.95ms)
-- Solid aggregations (63.23ms)
+- Excellent writes (2.88-2.99ms)
+- Good reads (0.30-1.00ms)
+- Solid aggregations (63.35ms)
 
-__2. AlloyDB__ - Best for cloud-native read-heavy workloads
-- Fastest complex queries (0.84ms)
-- Competitive point lookups (0.27ms)
-- Good writes (5.15-7.46ms)
+__3. AlloyDB__ - Best for cloud-native read-heavy workloads
+- Fastest point lookups (0.23ms)
+- Competitive complex queries (0.89ms)
+- Good writes (4.50-5.24ms)
 
 __3. MySQL__ - Best for text search workloads
 - Dominant text search (2.82ms with FULLTEXT)
@@ -159,36 +137,15 @@ __4. Elasticsearch__ - Unmatched for analytics/aggregations
 | Database | Time | Implementation | Notes |
 |----------|------|----------------|-------|
 | MySQL | 2.82ms | FULLTEXT index | Purpose-built, highly optimized |
+| PostgreSQL | 4.32ms | Full-text search (tsvector) | Optimized with GIN index |
+| AlloyDB | 4.24ms | Full-text search (tsvector) | Optimized with GIN index |
 | Elasticsearch | 6.22ms | Inverted index | Search engine, full features |
-| MongoDB | 6.33ms | Text index | Weighted fields |
-| AlloyDB | 22.04ms | Trigram similarity | Scoring overhead |
-| PostgreSQL | 41.56ms | Trigram similarity | Scoring overhead |
+| MongoDB | 6.19ms | Text index | Weighted fields |
 
-**Key Insight**: The trigram similarity operator `%` with scoring is significantly slower than simple pattern matching for this workload. PostgreSQL/AlloyDB should either use:
-1. ILIKE with GIN index (fast pattern matching)
-2. Full-text search with `to_tsvector`/`to_tsquery` (semantic search)
+**Key Insight**: PostgreSQL and AlloyDB full-text search optimization brought performance on par with other databases, using `to_tsvector` and `to_tsquery` with GIN indexes for efficient word-based searching.
 
-### 5. __MongoDB Schema Optimization Success__
 
-**Update/Delete Performance SOLVED:**
-- ✓ **Root cause**: Missing index on `id` field in enrollments collection
-- ✓ **Fix applied**: Added `db.enrollments.createIndex({ "id": 1 })`
-- ✓ **Before**: Update 125.29ms, Delete 111.23ms
-- ✓ **After**: Update 0.53ms, Delete 0.52ms
-- ✓ **Improvement**: 236x faster (now **fastest among all databases**)
-
-**Multi-Factor Lookup Performance IMPROVED:**
-- ✓ **Optimization**: Added compound index `{ "department": 1, "instructor_id": 1 }`
-- ✓ **Before**: 1.59ms
-- ✓ **After**: 1.05ms  
-- ✓ **Improvement**: 34% faster
-
-**Remaining Optimization Opportunity:**
-- **Aggregation**: 208.56ms (still 53x slower than Elasticsearch, 3x slower than PostgreSQL)
-- Consider adding compound index `{ "course_id": 1, "user_id": 1 }` for aggregation queries
-- Investigate using aggregation pipeline optimization techniques
-
-### 6. __Workload-Specific Recommendations__
+### 5. __Workload-Specific Recommendations__
 
 __High-Performance OLTP:__
 - __PostgreSQL__ (best balanced writes/reads)
@@ -208,7 +165,7 @@ __High-Volume Writes:__
 - __MongoDB__ (0.50-0.53ms all write operations - **fastest**)
 - __PostgreSQL__ (balanced 2.84-3.34ms)
 
-### 7. __Database Size Analysis__
+### 6. __Database Size Analysis__
 
 | Database | Total Size | Data Size | Index Size | Storage Efficiency |
 |----------|------------|-----------|------------|-------------------|
@@ -260,7 +217,7 @@ __High-Volume Writes:__
 - For balanced space/performance: MySQL or MongoDB
 - For feature-rich relational database: Accept PostgreSQL's larger footprint for its capabilities
 
-### 8. __Resource Allocation Notes__
+### 7. __Resource Allocation Notes__
 
 **Current Setup:**
 - PostgreSQL, MySQL, AlloyDB: Unlimited Docker resources
