@@ -82,13 +82,23 @@ function generateEnrollments() {
 }
 
 async function bulkInsert(data, index, client) {
-  const operations = data.flatMap(doc => [{ index: { _index: index, _id: doc.id.toString() } }, doc]);
-  const bulkResponse = await client.bulk({ refresh: true, operations });
-  if (bulkResponse.errors) {
-    console.error('Bulk errors:', bulkResponse);
-  } else {
-    console.log(`Inserted ${data.length} documents into ${index}`);
+  const batchSize = 5000;
+  for (let i = 0; i < data.length; i += batchSize) {
+    const batch = data.slice(i, i + batchSize);
+    const operations = batch.flatMap(doc => [{ index: { _index: index, _id: doc.id.toString() } }, doc]);
+    
+    try {
+      const bulkResponse = await client.bulk({ refresh: true, operations });
+      if (bulkResponse.errors) {
+        console.error('Bulk errors in batch:', bulkResponse.items.filter(item => item.index && item.index.error));
+      } else {
+        process.stdout.write(`.`); // Progress indicator
+      }
+    } catch (err) {
+      console.error('Bulk insert failed:', err);
+    }
   }
+  console.log(`\nInserted ${data.length} documents into ${index}`);
 }
 
 async function waitForConnection() {

@@ -84,7 +84,7 @@ function generateEnrollments() {
 }
 
 async function insertBatch(client, table, columns, data) {
-  const batchSize = 100; // Insert in batches of 100 to avoid parameter limits
+  const batchSize = 5000;
   for (let i = 0; i < data.length; i += batchSize) {
     const batch = data.slice(i, i + batchSize);
     const placeholders = batch.map((_, j) => `(${columns.map((_, k) => `$${(j * columns.length) + k + 1}`).join(', ')})`).join(', ');

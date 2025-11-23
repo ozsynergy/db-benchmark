@@ -317,41 +317,43 @@ class QueryRunner {
 }
 
 class Benchmark {
-  constructor(serverType, requestCount = 100, debug = false, showQueryPlan = false) {
+  constructor(serverType, requestCount = 100, debug = false, showQueryPlan = false, warmup = 0, concurrency = 1) {
     this.serverType = serverType;
     this.requestCount = requestCount;
     this.debug = debug;
     this.showQueryPlan = showQueryPlan;
+    this.warmup = warmup;
+    this.concurrency = concurrency;
     this.enrollmentIdCounter = 500001;
 
     this.config = {
       mongo: {
-        url: 'mongodb://root:root@localhost:27017',
-        dbName: 'benchmark'
+        url: process.env.MONGO_URL || 'mongodb://root:root@localhost:27017',
+        dbName: process.env.MONGO_DB_NAME || 'benchmark'
       },
       mysql: {
-        host: 'localhost',
-        port: 3306,
-        user: 'root',
-        password: 'root',
-        database: 'benchmark'
+        host: process.env.MYSQL_HOST || 'localhost',
+        port: parseInt(process.env.MYSQL_PORT || '3306'),
+        user: process.env.MYSQL_USER || 'root',
+        password: process.env.MYSQL_PASSWORD || 'root',
+        database: process.env.MYSQL_DATABASE || 'benchmark'
       },
       postgresql: {
-        host: 'localhost',
-        port: 5432,
-        user: 'postgres',
-        password: 'root',
-        database: 'benchmark'
+        host: process.env.POSTGRES_HOST || 'localhost',
+        port: parseInt(process.env.POSTGRES_PORT || '5432'),
+        user: process.env.POSTGRES_USER || 'postgres',
+        password: process.env.POSTGRES_PASSWORD || 'root',
+        database: process.env.POSTGRES_DATABASE || 'benchmark'
       },
       alloydb: {
-        host: 'localhost',
-        port: 5432,
-        user: 'postgres',
-        password: 'root',
-        database: 'benchmark'
+        host: process.env.ALLOYDB_HOST || 'localhost',
+        port: parseInt(process.env.ALLOYDB_PORT || '5432'),
+        user: process.env.ALLOYDB_USER || 'postgres',
+        password: process.env.ALLOYDB_PASSWORD || 'root',
+        database: process.env.ALLOYDB_DATABASE || 'benchmark'
       },
       elasticsearch: {
-        node: 'http://localhost:9200'
+        node: process.env.ELASTICSEARCH_NODE || 'http://localhost:9200'
       }
     };
 
@@ -391,19 +393,73 @@ class Benchmark {
   }
 
   async runBenchmark() {
-    console.log(`Running benchmarks for ${this.serverType} with ${this.requestCount} requests per query...\n`);
+    console.log(`Running benchmarks for ${this.serverType}`);
+    console.log(`Configuration: ${this.requestCount} requests, ${this.warmup} warmup, ${this.concurrency} concurrency\n`);
 
+    // Warmup phase
+    if (this.warmup > 0) {
+      console.log('Starting warmup phase...');
+      for (const query of this.queries) {
+        // Run warmup queries in batches based on concurrency
+        const batches = Math.ceil(this.warmup / this.concurrency);
+        for (let b = 0; b < batches; b++) {
+          const promises = [];
+          const batchSize = Math.min(this.concurrency, this.warmup - (b * this.concurrency));
+          for (let i = 0; i < batchSize; i++) {
+            promises.push(query.func().catch(e => console.error('Warmup error:', e.message)));
+          }
+          await Promise.all(promises);
+        }
+      }
+      console.log('Warmup complete.\n');
+    }
+
+    // Benchmark phase
     for (const query of this.queries) {
       const times = [];
-      for (let i = 0; i < this.requestCount; i++) {
-        const start = process.hrtime.bigint();
-        await query.func();
-        const end = process.hrtime.bigint();
-        const time = Number(end - start) / 1e6; // ms
-        times.push(time);
+      const batches = Math.ceil(this.requestCount / this.concurrency);
+      
+      for (let b = 0; b < batches; b++) {
+        const promises = [];
+        const startTimes = [];
+        const batchSize = Math.min(this.concurrency, this.requestCount - (b * this.concurrency));
+        
+        for (let i = 0; i < batchSize; i++) {
+          startTimes.push(process.hrtime.bigint());
+          // Execute query and capture timing for each individual request
+          promises.push(
+            query.func()
+              .then(() => {
+                const end = process.hrtime.bigint();
+                return end;
+              })
+              .catch(err => {
+                console.error(`Error in query ${query.name}:`, err.message);
+                return process.hrtime.bigint(); // Return end time anyway to avoid hanging
+              })
+          );
+        }
+        
+        const endTimes = await Promise.all(promises);
+        
+        // Calculate times for this batch
+        for (let i = 0; i < batchSize; i++) {
+          const time = Number(endTimes[i] - startTimes[i]) / 1e6; // ms
+          times.push(time);
+        }
       }
+
       const avg = times.reduce((a, b) => a + b, 0) / times.length;
-      console.log(`${query.name}: Average time per request: ${avg.toFixed(2)} ms`);
+      const sortedTimes = times.sort((a, b) => a - b);
+      const p95 = sortedTimes[Math.floor(sortedTimes.length * 0.95)];
+      const min = sortedTimes[0];
+      const max = sortedTimes[sortedTimes.length - 1];
+      
+      console.log(`${query.name}:`);
+      console.log(`  Avg: ${avg.toFixed(2)} ms`);
+      console.log(`  P95: ${p95.toFixed(2)} ms`);
+      console.log(`  Min: ${min.toFixed(2)} ms`);
+      console.log(`  Max: ${max.toFixed(2)} ms`);
     }
 
     // Display database size at the end
@@ -558,34 +614,41 @@ async function explainAllMongoQueries(db, serverType, showQueryPlan) {
 const args = process.argv.slice(2);
 let debug = false;
 let showQueryPlan = false;
-let serverTypeIndex = 0;
+let warmup = 0;
+let concurrency = 1;
+let serverTypeIndex = -1;
 
-if (args.includes('--debug')) {
-  debug = true;
-}
-if (args.includes('--explain')) {
-  showQueryPlan = true;
-}
-
-// Find the server type index (first non-flag argument)
+// Parse flags
 for (let i = 0; i < args.length; i++) {
-  if (!args[i].startsWith('--')) {
+  if (args[i] === '--debug') {
+    debug = true;
+  } else if (args[i] === '--explain') {
+    showQueryPlan = true;
+  } else if (args[i] === '--warmup') {
+    warmup = parseInt(args[i + 1]) || 0;
+    i++; // Skip next arg
+  } else if (args[i] === '--concurrency') {
+    concurrency = parseInt(args[i + 1]) || 1;
+    i++; // Skip next arg
+  } else if (!args[i].startsWith('--') && serverTypeIndex === -1) {
     serverTypeIndex = i;
-    break;
   }
 }
 
 const serverType = args[serverTypeIndex];
-const requestCount = debug ? 1 : parseInt(args[serverTypeIndex + 1]) || 100;
+const requestCount = debug ? 1 : (serverTypeIndex !== -1 && args[serverTypeIndex + 1] && !args[serverTypeIndex + 1].startsWith('--') ? parseInt(args[serverTypeIndex + 1]) : 100);
 
 if (!serverType || !['mongo', 'mysql', 'postgresql', 'alloydb', 'elasticsearch'].includes(serverType)) {
-  console.error('Usage: node benchmark.js [--debug] [--explain] <server type> [request count]');
+  console.error('Usage: node benchmark.js [options] <server type> [request count]');
   console.error('server type: mongo, mysql, postgresql, alloydb, elasticsearch');
-  console.error('request count: number of requests per test (default: 100, ignored in debug mode)');
-  console.error('--debug: run in debug mode (single request per query with detailed output)');
-  console.error('--explain: show MongoDB query execution plans (MongoDB only)');
+  console.error('request count: number of requests per test (default: 100)');
+  console.error('Options:');
+  console.error('  --debug             Run in debug mode (single request per query with detailed output)');
+  console.error('  --explain           Show MongoDB query execution plans (MongoDB only)');
+  console.error('  --warmup <count>    Number of warmup requests per query (default: 0)');
+  console.error('  --concurrency <n>   Number of concurrent requests (default: 1)');
   process.exit(1);
 }
 
-const benchmark = new Benchmark(serverType, requestCount, debug, showQueryPlan);
+const benchmark = new Benchmark(serverType, requestCount, debug, showQueryPlan, warmup, concurrency);
 benchmark.run();

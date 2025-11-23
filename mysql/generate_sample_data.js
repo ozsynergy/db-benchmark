@@ -117,13 +117,17 @@ function generateEnrollments() {
 }
 
 async function insertBatch(connection, table, columns, data) {
-  const query = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ?`;
-  return new Promise((resolve, reject) => {
-    connection.query(query, [data], (error, results) => {
-      if (error) reject(error);
-      else resolve(results);
+  const batchSize = 5000;
+  for (let i = 0; i < data.length; i += batchSize) {
+    const batch = data.slice(i, i + batchSize);
+    const query = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ?`;
+    await new Promise((resolve, reject) => {
+      connection.query(query, [batch], (error, results) => {
+        if (error) reject(error);
+        else resolve(results);
+      });
     });
-  });
+  }
 }
 
 async function main() {

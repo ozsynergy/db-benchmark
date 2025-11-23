@@ -11,7 +11,7 @@
 | __Insert Enrollment__ | 9.69 | 3.44 | 3.72 | __0.50__ | 13.81 |
 | __Update Enrollment__ | 9.15 | 2.99 | 5.24 | __0.53__ | 14.90 |
 | __Delete Enrollment__ | 9.47 | 2.88 | 4.50 | __0.52__ | 13.62 |
-| __Database Size__ | 78.22 MB | 158.7 MB | 183.31 MB | __67.89 MB__ | __60.01 MB__ |
+| __Database Size__ | 78.22 MB | 117.61 MB | 146.44 MB | __50.77 MB__ | 59.88 MB |
 
 
 ## Key Changes From Previous Biased Results
@@ -169,47 +169,45 @@ __High-Volume Writes:__
 
 | Database | Total Size | Data Size | Index Size | Storage Efficiency |
 |----------|------------|-----------|------------|-------------------|
-| **Elasticsearch** | **60.01 MB** | N/A | N/A | Most compact |
-| **MongoDB** | **67.89 MB** | 55.61 MB | 39.45 MB | 2nd most compact |
+| **MongoDB** | **50.77 MB** | 55.61 MB | 30.25 MB | Most compact |
+| **Elasticsearch** | **59.88 MB** | N/A | N/A | 2nd most compact |
 | **MySQL** | 78.22 MB | 36.58 MB | 41.64 MB | Moderate |
-| **PostgreSQL** | 175.22 MB | N/A | N/A | Largest |
-| **AlloyDB** | 198.79 MB | N/A | N/A | Largest (PostgreSQL-based) |
+| **PostgreSQL** | 117.61 MB | N/A | N/A | Improved (after cleanup) |
+| **AlloyDB** | 146.44 MB | N/A | N/A | Largest (PostgreSQL-based) |
 
 **Dataset**: 20,000 users, 45,000 courses, 450,000 enrollments
 
 **Key Findings:**
 
-1. **Elasticsearch (60.01 MB) - Most Storage Efficient**
+1. **MongoDB (50.77 MB) - Most Storage Efficient**
+   - After removal of unused indexes from schema
+   - Data: 55.61 MB, Indexes: 30.25 MB
+   - Document model with selective indexing proves highly efficient
+
+2. **Elasticsearch (59.88 MB) - Highly Compact**
+   - Consistent size around 60MB
    - Highly optimized compression
    - Inverted index structure is space-efficient for this dataset
-   - Despite having full-text search capabilities, uses least space
-
-2. **MongoDB (67.89 MB) - Second Most Compact**
-   - After schema optimization (removed unused indexes)
-   - Data: 55.61 MB, Indexes: 39.45 MB (41% index overhead)
-   - Document model with selective indexing proves efficient
-   - Removing unused indexes saved significant space
 
 3. **MySQL (78.22 MB) - Moderate Size**
+   - Consistent size
    - Data: 36.58 MB, Indexes: 41.64 MB (53% index overhead)
-   - Higher index-to-data ratio than MongoDB
    - FULLTEXT indexes add overhead but enable fast search
 
-4. **PostgreSQL (175.22 MB) - 2.9x Larger than MongoDB**
-   - Includes trigram indexes for text search (pg_trgm extension)
-   - Trigram indexes are space-intensive
-   - More metadata and system catalog overhead
+4. **PostgreSQL (117.61 MB) - Significantly Optimized**
+   - Reduced from ~175 MB by removing unused `pg_trgm` (trigram) indexes
+   - Now only ~2.3x larger than MongoDB (was 2.9x)
+   - Shows importance of cleaning up unused indexes
 
-5. **AlloyDB (198.79 MB) - Largest Database**
+5. **AlloyDB (146.44 MB) - Largest Database**
+   - Reduced from ~199 MB by removing unused trigram indexes
    - PostgreSQL-compatible, similar overhead
    - Cloud-native features may add metadata
-   - 13% larger than base PostgreSQL
 
 **Storage Efficiency Insights:**
 
-- **Index Strategy Impact**: MongoDB's selective indexing approach (after optimization) results in 61% smaller size than PostgreSQL
-- **NoSQL vs SQL**: Document databases (MongoDB, Elasticsearch) are more storage-efficient for this schema (60-68 MB vs 78-199 MB)
-- **Trigram Cost**: PostgreSQL/AlloyDB's trigram indexes for text search consume significant space (2-3x overhead vs other approaches)
+- **Index Strategy Impact**: Removing unused indexes (Trigram in PG/AlloyDB, general in Mongo) significantly improves storage efficiency.
+- **Trigram Savings**: Removing unused Trigram indexes saved ~33% space in PostgreSQL and ~26% in AlloyDB.
 - **Space-Performance Tradeoff**: While PostgreSQL/AlloyDB use more space, they offer strong ACID guarantees and relational integrity
 
 **Recommendations:**

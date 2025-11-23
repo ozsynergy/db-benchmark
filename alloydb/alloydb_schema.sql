@@ -37,10 +37,6 @@ ALTER TABLE courses ADD COLUMN tsv_title_description tsvector
 -- GIN index for full-text search (much faster than trigram similarity)
 CREATE INDEX idx_courses_fts ON courses USING GIN (tsv_title_description);
 
--- Keep GIN trigram index as fallback for ILIKE queries
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE INDEX idx_courses_title_trgm ON courses USING GIN (title gin_trgm_ops);
-CREATE INDEX idx_courses_description_trgm ON courses USING GIN (description gin_trgm_ops);
 
 -- Enrollments table for tracking student-course relationships
 CREATE TABLE enrollments (
